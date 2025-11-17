@@ -1,0 +1,58 @@
+cnp_settings:
+  training_epochs: 15
+  # v1, v2: 20
+  # v3: 5
+  # v4: 15
+  # v5: 20
+  # v6: 50 (like v1 but 50 epochs)
+  context_ratio: 0.3333333 #v1, v2, v3, v4: 0.3333333 # v5: 0.5 - bad results
+  context_is_subset: True
+  batch_size_train: 6000
+  # 1000 v3
+  # 50000 v2
+  # 6000 v1
+  # 6000 v5
+  files_per_batch_train: 100
+  # v1, v2: 100
+  batch_size_predict: [30000, 100000] # [34000, 150000] (std bands too large (87, 100, 100)) # [50000,10000000]  # might have to change these values and make them smaller, especially for high fidelity
+  files_per_batch_predict: 1
+  number_of_walkers: 1  # Set to 0 if you get file locking errors. Run preprocess_mixup.py first to enable multiprocessing.
+  config_wise: False
+  use_data_augmentation: "mixup" #"smote" #False #"mixup"
+  use_beta: [0.1,0.1] #[0.1,0.1] # uniform => None, beta => [a,b] U-shape [0.1,0.1] Uniform [1.,1.] falling [0.2,0.5] rising [0.2,0.5]
+  # v1, v2, v3: 0.1, 0.1
+  # v4: 1.0, 1.0
+  # v5: 0.1, 0.1 - bad results
+  signal_to_background_ratio: "" # "_1to4" # used for smote augmentation
+  ratio_testing_vs_training: 1/40
+  plot_after: 1000  # Increased from 200 to 1000 to reduce plotting overhead for HF data
+
+simulation_settings:
+  # XENON detector design optimization
+  # θ: Design parameters to be optimized (scintillator position)
+  theta_headers: ["scint_x","scint_y"]
+  # φ: Event-specific physics parameters (for each neutrino/particle event)
+  phi_labels: ["x_init_mm","y_init_mm","z_init_mm","x_final_mm", "y_final_mm", "z_final_mm","energy_keV", "time_ns"]
+  #["x_init_mm","y_init_mm","z_init_mm","energy_init_keV","p_x","p_y","p_z"]
+  # Target: Binary outcome for rare event detection (signal vs background)
+  target_headers: ["tag_final"]
+  target_range: [0,1]  # Binary: signal event detected (1) or background (0)
+  signal_condition: ["tag_final==1"] # (veto_active==0 & detector_active==1)
+  weights_labels: ["weights"]
+  # Design parameter boundaries (from actual experimental data)  # need all of these for MFGP
+  theta_min: [0, 0]    # Min: scint_x=0mm, scint_y=0mm
+  theta_max: [60, 45]  # Max: scint_x=60mm, scint_y=45mm
+  theta_fixed: [30, 30]  # Baseline configuration
+  lf_cost: 1
+  hf_cost: 2000  # HF simulations much more expensive
+
+path_settings:
+  version: v30.0 #v10 - 1and2 ; v20 - 1andnot2_2andnot1 ; v30 - original_vars 1 and 2; v40 - original_vars, only 1 ; v50 - original_vars, only 2
+  path_to_files_train: "../xenon/in/data/original_vars/training/lf/"  
+  path_to_files_predict: ["../xenon/in/data/original_vars/validation/lf"] #, "../xenon/in/data/original_vars/training/hf/"]  # use validation lf only for mfgp, training lf and hf for cnp
+  iteration: [0,0]
+  fidelity: [0,1]
+  path_to_files_validation: "../xexnon/out/cnp/cnp_v1.0_output_validation_20epochs.csv"
+  path_out_cnp:  ../xenon/out/cnp
+  path_out_mfgp:  ../xenon/out/mfgp
+  path_out_pce: ../xenon/out/pce

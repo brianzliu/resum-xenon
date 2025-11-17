@@ -204,7 +204,12 @@ class DataGeneration(object):
 
     def set_loader(self):
         dataset = HDF5Dataset(self.path_to_files, self._batch_size, files_per_batch=self.files_per_batch, parameters=self.parameters)
-        self.dataloader = DataLoader(dataset, batch_size=None, num_workers=self.config_file["cnp_settings"]["number_of_walkers"], prefetch_factor=2) 
+        num_workers = self.config_file["cnp_settings"]["number_of_walkers"]
+        # prefetch_factor only works with multiprocessing (num_workers > 0)
+        if num_workers > 0:
+            self.dataloader = DataLoader(dataset, batch_size=None, num_workers=num_workers, prefetch_factor=2)
+        else:
+            self.dataloader = DataLoader(dataset, batch_size=None, num_workers=num_workers) 
 
     def mixup_augment_data(self,filename, use_beta,condition_strings, seed=42):
         """
@@ -226,11 +231,11 @@ class DataGeneration(object):
         np.random.seed(seed)  # Set the seed for reproducibility
         with h5py.File(filename, "a") as f:  # Open in append mode
             # Check if mixup datasets already exist
-            #if "phi_mixedup" in f and "target_mixedup" in f:
-            #    if "signal_condition" in f:
-            #        existing_conditions = [s.decode("utf-8") for s in f["signal_condition"][:]]
-            #        if existing_conditions == condition_strings:
-            #            return
+            if "phi_mixedup" in f and "target_mixedup" in f:
+                if "signal_condition" in f:
+                    existing_conditions = [s.decode("utf-8") for s in f["signal_condition"][:]]
+                    if existing_conditions == condition_strings:
+                        return
             phi = np.array(f["phi"])  # Feature data
             target = np.array(f["target"])  # Labels
             has_weights = "weights" in f  # Check if "weights" dataset exists

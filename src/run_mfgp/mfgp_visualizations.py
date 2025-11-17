@@ -14,11 +14,27 @@ import glob
 from pathlib import Path
 from collections import defaultdict
 import seaborn as sns
+import yaml
 from matplotlib.patches import Rectangle
 from scipy.spatial.distance import cdist
+from matplotlib.lines import Line2D
 
 # Import required modules for MFGP
 from emukit.multi_fidelity.convert_lists_to_array import convert_x_list_to_array, convert_xy_lists_to_arrays
+
+
+with open("../xenon/settings.yaml", "r") as f:
+    config_file = yaml.safe_load(f)
+
+PLOT_AFTER = int(config_file["cnp_settings"]["plot_after"])
+FILES_PER_BATCH = config_file["cnp_settings"]["files_per_batch_predict"]
+target_range = config_file["simulation_settings"]["target_range"]
+is_binary = target_range[0] >= 0 and target_range[1] <= 1
+
+path_out  = config_file["path_settings"]["path_out_cnp"]
+version   = config_file["path_settings"]["version"]
+iteration = config_file["path_settings"]["iteration"]
+fidelity  = config_file["path_settings"]["fidelity"]
 
 
 class MFGPAnalyzer:
@@ -388,7 +404,7 @@ class MFGPAnalyzer:
         plt.tight_layout()
         
         if save_plots:
-            save_path = self.output_dir / 'coverage_summary.png'
+            save_path = self.output_dir / f'{version}_coverage_summary.png'
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             print(f"Coverage summary saved: {save_path}")
             
@@ -405,7 +421,7 @@ class MFGPAnalyzer:
             print(f"±{sigma}σ: {total_within}/{total_points} ({percentage:.1f}%) | " +
                   f"Theoretical: {theoretical:.1f}% | Diff: {percentage-theoretical:+.1f}%")
 
-    def create_enhanced_contour_plots(self, processed_data, grid_steps=50, levels=25, save_plots=True):
+    def create_enhanced_contour_plots(self, processed_data, grid_steps=50, levels=25, save_plots=True, show_hf_training=True, hf_training_data_file=None):
         """
         Create enhanced contour plots showing mean prediction and uncertainty with training data overlaid.
         
@@ -432,9 +448,13 @@ class MFGPAnalyzer:
                 all_x_data.extend([[combo_key[0], combo_key[1]]] * len(group_data['y_values']))
                 all_y_data.extend(group_data['y_values'])
         all_x_data = np.array(all_x_data)
-        # Get parameter ranges
-        param_x_min, param_x_max = all_x_data[:, 1].min(), all_x_data[:, 1].max()
-        param_y_min, param_y_max = all_x_data[:, 0].min(), all_x_data[:, 0].max()
+
+        # Use full theta bounds from settings (scint_x: 0-60, scint_y: 0-45)
+        theta_min = [0, 0]  # scint_x_min, scint_y_min
+        theta_max = [60, 45]  # scint_x_max, scint_y_max
+        param_x_min, param_x_max = theta_min[1], theta_max[1]  # scint_y range for y-axis
+        param_y_min, param_y_max = theta_min[0], theta_max[0]  # scint_x range for x-axis
+
         # Create prediction grid
         x_vals = np.linspace(param_x_min, param_x_max, grid_steps)
         y_vals = np.linspace(param_y_min, param_y_max, grid_steps)
@@ -450,12 +470,23 @@ class MFGPAnalyzer:
         # Get predictions
         mean_pred, var_pred = self.mf_model.predict(points_with_fidelity)
         std_pred = np.sqrt(var_pred)
-        Z_mean = mean_pred.reshape(grid_steps, grid_steps)
-        Z_std = std_pred.reshape(grid_steps, grid_steps)
+        
+        # Automatically determine scale factor based on magnitude
+        max_mean = np.max(np.abs(mean_pred))
+        if max_mean > 0:
+            exponent = int(np.floor(np.log10(max_mean)))
+            scale_factor = 10 ** (-exponent)
+        else:
+            exponent = 0
+            scale_factor = 1
+        
+        Z_mean = mean_pred.reshape(grid_steps, grid_steps) * scale_factor
+        Z_std = std_pred.reshape(grid_steps, grid_steps) * scale_factor
+        
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6), constrained_layout=True)
         contour1 = ax1.contourf(Xg, Yg, Z_mean, levels=levels, cmap='viridis')
         cbar1 = fig.colorbar(contour1, ax=ax1)
-        cbar1.set_label(r"Predicted $y_{raw}$ (mean)", fontsize=12)
+        cbar1.set_label(rf"Predicted $y_{{\rm{{raw}}}}$ (mean) [$\times10^{{{exponent}}}$]", fontsize=12)
         ax1.contour(Xg, Yg, Z_mean, levels=levels, colors='black', alpha=0.3, linewidths=0.5)
         for file_name, file_data in processed_data.items():
             x_coords = []
@@ -463,10 +494,48 @@ class MFGPAnalyzer:
             for combo_key in file_data['theta_groups'].keys():
                 x_coords.append(combo_key[1])
                 y_coords.append(combo_key[0])
-            # changed to black points with white border
-            ax1.scatter(x_coords, y_coords, c='black', s=100,
-                        marker='o', edgecolors='white', linewidth=1.5,
-                        label='LF Data', alpha=0.9, zorder=5)
+            # # Plot LF Training Data points (from filename coordinates)
+            # ax1.scatter(x_coords, y_coords, c='orange', s=100,
+            #             marker='^', edgecolors='white', linewidth=1.5,
+            #             label='LF Training Data', alpha=0.9, zorder=5)
+            
+            # Extract LF training data coordinates from filenames
+            lf_train_dir = Path("../xenon/in/data/original_vars/training/lf")
+            if lf_train_dir.exists():
+                import re
+                lf_x_coords = []
+                lf_y_coords = []
+                for lf_file in lf_train_dir.glob('*.csv'):
+                    match = re.search(r'sim_X(\d+)_Y(\d+)', lf_file.name)
+                    if match:
+                        lf_x_coords.append(int(match.group(2)))  # Y from filename
+                        lf_y_coords.append(int(match.group(1)))  # X from filename
+                
+                if lf_x_coords and lf_y_coords:
+                    ax1.scatter(lf_x_coords, lf_y_coords, c='orange', s=20,
+                               marker='^', edgecolors='white', linewidth=0.8,
+                               alpha=0.7, zorder=4, label='LF Training Data')
+
+            # Optionally overlay HF training points (fidelity==1.0)
+            if show_hf_training:
+                source_file = hf_training_data_file if hf_training_data_file else file_data.get('file_path')
+                if source_file:
+                    try:
+                        iter_values = file_data['full_data']['iteration'].unique()
+                        iter_used = iter_values[0] if len(iter_values) else 0
+                        df_all = pd.read_csv(source_file)
+                        hf_df = df_all[(df_all['fidelity'] == 1.0) & (df_all['iteration'] == iter_used)]
+                        if not hf_df.empty:
+                            hf_unique = hf_df[self.x_labels].drop_duplicates()
+                            hf_x = [row[self.x_labels[1]] for _, row in hf_unique.iterrows()]
+                            hf_y = [row[self.x_labels[0]] for _, row in hf_unique.iterrows()]
+                            ax1.scatter(hf_x, hf_y, c='dodgerblue', s=20,
+                                        marker='^', edgecolors='white', linewidth=1.2,
+                                        label='HF Training Data', alpha=0.9, zorder=6)
+                    except Exception as e:
+                        print(f"  Could not load HF training data for contour plot: {e}")
+
+
         ax1.set_xlabel(self.x_labels[1], fontsize=12)
         ax1.set_ylabel(self.x_labels[0], fontsize=12)
         ax1.set_title('Mean Prediction', fontsize=14)
@@ -474,7 +543,7 @@ class MFGPAnalyzer:
         ax1.grid(True, alpha=0.3)
         contour2 = ax2.contourf(Xg, Yg, Z_std, levels=levels, cmap='Reds')
         cbar2 = fig.colorbar(contour2, ax=ax2)
-        cbar2.set_label(r"Uncertainty ($\sigma$)", fontsize=12)
+        cbar2.set_label(rf"Uncertainty ($\sigma$) [$\times10^{{{exponent}}}$]", fontsize=12)
         ax2.contour(Xg, Yg, Z_std, levels=levels, colors='black', alpha=0.3, linewidths=0.5)
         for file_name, file_data in processed_data.items():
             x_coords = []
@@ -482,17 +551,54 @@ class MFGPAnalyzer:
             for combo_key in file_data['theta_groups'].keys():
                 x_coords.append(combo_key[1])
                 y_coords.append(combo_key[0])
-            # changed to black points with white border
-            ax2.scatter(x_coords, y_coords, c='black', s=100,
-                        marker='o', edgecolors='white', linewidth=1.5,
-                        label='LF Data', alpha=0.9, zorder=5)
+            # # Plot LF Training Data points (from filename coordinates)
+            # ax2.scatter(x_coords, y_coords, c='orange', s=100,
+            #             marker='^', edgecolors='white', linewidth=1.5,
+            #             label='LF Training Data', alpha=0.9, zorder=5)
+            
+            # Extract LF training data coordinates from filenames
+            lf_train_dir = Path("../xenon/in/data/original_vars/training/lf")
+            if lf_train_dir.exists():
+                import re
+                lf_x_coords = []
+                lf_y_coords = []
+                for lf_file in lf_train_dir.glob('*.csv'):
+                    match = re.search(r'sim_X(\d+)_Y(\d+)', lf_file.name)
+                    if match:
+                        lf_x_coords.append(int(match.group(2)))  # Y from filename
+                        lf_y_coords.append(int(match.group(1)))  # X from filename
+                
+                if lf_x_coords and lf_y_coords:
+                    ax2.scatter(lf_x_coords, lf_y_coords, c='orange', s=20,
+                               marker='^', edgecolors='white', linewidth=0.8,
+                               alpha=0.7, zorder=4, label='LF Training Data')
+
+            # Optionally overlay HF training points on uncertainty subplot as well
+            if show_hf_training:
+                source_file = hf_training_data_file if hf_training_data_file else file_data.get('file_path')
+                if source_file:
+                    try:
+                        iter_values = file_data['full_data']['iteration'].unique()
+                        iter_used = iter_values[0] if len(iter_values) else 0
+                        df_all = pd.read_csv(source_file)
+                        hf_df = df_all[(df_all['fidelity'] == 1.0) & (df_all['iteration'] == iter_used)]
+                        if not hf_df.empty:
+                            hf_unique = hf_df[self.x_labels].drop_duplicates()
+                            hf_x = [row[self.x_labels[1]] for _, row in hf_unique.iterrows()]
+                            hf_y = [row[self.x_labels[0]] for _, row in hf_unique.iterrows()]
+                            ax2.scatter(hf_x, hf_y, c='dodgerblue', s=20,
+                                        marker='^', edgecolors='white', linewidth=1.2,
+                                        label='HF Training Data', alpha=0.9, zorder=6)
+                    except Exception as e:
+                        print(f"  Could not load HF training data for contour plot: {e}")
+
         ax2.set_xlabel(self.x_labels[1], fontsize=12)
         ax2.set_ylabel(self.x_labels[0], fontsize=12)
         ax2.set_title('Prediction Uncertainty', fontsize=14)
         ax2.legend(loc='upper right')
         ax2.grid(True, alpha=0.3)
         if save_plots:
-            save_path = self.output_dir / 'enhanced_contour_analysis.png'
+            save_path = self.output_dir / f'{version}_enhanced_contour_analysis.png'
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             print(f"Enhanced contour analysis saved: {save_path}")
         plt.show()
@@ -588,7 +694,7 @@ class MFGPAnalyzer:
         
         plt.show()
     
-    def plot_uncertainty_bands_across_thetas(self, predictions, processed_data, file_name=None, save_plot=True):
+    def plot_uncertainty_bands_across_thetas(self, predictions, processed_data, file_name=None, save_plot=True, include_hf_training=True, hf_training_data_file=None):
         """
         Plot uncertainty bands across all theta values for a given file.
 
@@ -684,6 +790,8 @@ class MFGPAnalyzer:
         text_str = "Coverage:\n" + "\n".join(coverage_text)
         ax.text(0.01, 0.99, text_str, transform=ax.transAxes, va='top',
                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.9), fontsize=9, family='monospace')
+
+
         plt.tight_layout()
         if save_plot:
             filename = f'uncertainty_bands_across_thetas_{Path(file_name).stem}.png'
@@ -693,7 +801,9 @@ class MFGPAnalyzer:
         plt.show()
 
     def run_complete_analysis(self, file_patterns, fidelity_filter=1.0, iteration_filter=0, 
-                            plot_individual_groups=True, save_all_plots=True):
+                            plot_individual_groups=True, save_all_plots=True, 
+                            show_hf_training=True, include_hf_training=True,
+                            hf_training_data_file=None):
         """
         Run the complete automated analysis pipeline.
         
@@ -709,6 +819,12 @@ class MFGPAnalyzer:
             Whether to plot individual theta combinations
         save_all_plots : bool
             Whether to save all plots to disk
+        show_hf_training : bool
+            Whether to show HF training data in contour plots (default: True)
+        include_hf_training : bool
+            Whether to include HF training data in across-theta plots (default: True)
+        hf_training_data_file : str, optional
+            Path to a separate file containing HF training data (default: None)
             
         Returns:
         --------
@@ -751,7 +867,9 @@ class MFGPAnalyzer:
         
         # Step 6: Create enhanced contour plots
         print("\n6. Creating enhanced contour analysis...")
-        self.create_enhanced_contour_plots(processed_data, save_plots=save_all_plots)
+        self.create_enhanced_contour_plots(processed_data, save_plots=save_all_plots, 
+                                          show_hf_training=show_hf_training,
+                                          hf_training_data_file=hf_training_data_file)
         
         # Step 7: Create prediction vs true plots
         print("\n7. Creating prediction vs true value plots...")
@@ -761,7 +879,9 @@ class MFGPAnalyzer:
         # Step 8: Create plot across all theta values
         print("\n8. Creating plot across all theta values...")
         for file_name in predictions.keys():
-            self.plot_uncertainty_bands_across_thetas(predictions, processed_data, file_name, save_all_plots)
+            self.plot_uncertainty_bands_across_thetas(predictions, processed_data, file_name, 
+                                                     save_all_plots, include_hf_training=include_hf_training,
+                                                     hf_training_data_file=hf_training_data_file)
 
         print("\n" + "="*80)
         print("ANALYSIS COMPLETE!")
