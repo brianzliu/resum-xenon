@@ -3,3 +3,5 @@ resum.egg-info/
 
 **/*.csv
 **/*.h5
+src/xenon/out/cnp/*
+src/xenon/out/mfgp/*
