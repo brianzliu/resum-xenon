@@ -3,7 +3,7 @@
 ## File Overview
 
 ### Data
-The data is stored somewhat weirdly; in `resum-xenon/src/xenon/in/data` you'll find 4 different experiments.
+The data is stored somewhat weirdly; in `resum-xenon/src/xenon/in/data` you'll find 3 different experiments.
 - `only1` - Set preprocessed y value to be 1 when one raw neutron event's rows contains y value 1 (but not 2), otherwise 0 (out of raw y values 0, 1, or 2); this corresponds to neutron depositing energy in scintillator but not reaching TPC
 
 - `only2` - Set preprocessed y value to be 1 when one raw neutron event's rows contains y value 2 (but not 1), otherwise 0. This corresponds to neutron entering TPC, but not reaching scintillator.
@@ -13,13 +13,13 @@ The data is stored somewhat weirdly; in `resum-xenon/src/xenon/in/data` you'll f
 (more on the meaning of 0, 1, 2 in Instructions/Data Preprocessing)
 
 Inside each of these folders you'll find:
-- `training/h`
+- `training/hf`
 - `training/lf`
 - `validation/lf`
 
-For validation, since we don't have enough training data for validation (only 3 configurations), I allocated ~10% of LF configurations across a wide range of the design space (theta) for validation instead.
+For validation, since we don't have enough HF data for validation (only 3 configurations), I allocated ~10% of LF configurations across a wide range of the design space (theta) for validation instead.
 
-Each hf/lf subfolder contains many csv files—1 csv file per configuration/simulation. Each csv file corresponds with a `.h5` file, which is needed to run the CNP. 
+Each HF/LF subfolder contains many csv files—1 csv file per configuration/simulation. Each csv file corresponds with a `.h5` file, which is needed to run the CNP. 
 
 ### CNP
 Inside `src/run_cnp` find the training and prediction Jupyter Notebooks. Running these notebooks alone will train and predict the CNP, and you don't need to run anything else. 
@@ -30,7 +30,7 @@ However, if CNP training takes a while, you can run the command below instead to
 nohup python cnp_training.py > output.log 2>&1 &
 ```
 
-If you choose this route, please also run `python preprocess_mixup.py`, as this is not automated with `cnp_training.py`. After training, run `conditional_neural_process_predict_xenon.ipynb` as usual. Results are saved to `src/xenon/out/cnp`.
+If you choose this route, please also run `python preprocess_mixup.py` before `cnp_training.py`, as this is not automated with `cnp_training.py`. After training, run `conditional_neural_process_predict_xenon.ipynb` as usual. Results are saved to `src/xenon/out/cnp`.
 
 ### MFGP
 Inside `src/run_mfgp` find the main file, `mfgp_xenon.ipynb`, which "trains" the MFGP and returns RESuM's final results and visualizations. Similar to CNP, if training takes a while you can run `run_mfgp.py`. Results will be saved to `src/xenon/out/mfgp`.
@@ -49,7 +49,9 @@ After importing the (original) XENON dataset, you'll find the "XENON" folder wit
 - `TPCLF`
 - `Data_introduce.py`
 
-Feel free to explore the data. Every unique event id represents one simulated neutron. There are multiple timesteps (time_ns), each with initial and ending position. (This is represented either as (`pre_x_mm`, `pre_y_mm`, `pre_z_mm`, `post_x_mm`, `post_y_mm`, `post_z_mm`) or (`vrt_x_mm`, `vrt_y_mm`, `vrt_z_mm`, `x_mm`, `y_mm`, `z_mm`) respectively) depending on the file. We also have kinetic energy (`energy_keV`), and the raw y value (`creatpro` or `tag` depending on the file).
+Feel free to explore the data (the original XENON dataset). The dataset is actually comprised of both `ReSUM.tar.gz` and `TPCLF.tar.gz` in the shared OneDrive, so be sure to merge them.
+
+Every unique event id represents one simulated neutron. There are multiple timesteps (time_ns), each with initial and ending position. (This is represented either as (`pre_x_mm`, `pre_y_mm`, `pre_z_mm`, `post_x_mm`, `post_y_mm`, `post_z_mm`) or (`vrt_x_mm`, `vrt_y_mm`, `vrt_z_mm`, `x_mm`, `y_mm`, `z_mm`) respectively) depending on the file. We also have kinetic energy (`energy_keV`), and the raw y value (`creatpro` or `tag` depending on the file).
 
 To preprocess the data, run `process_xenon_original_vars.py` and modify the line below depending on whether you want to process `only1`, `only2`, and/or `(1 and 2)`. (For the definitions of these see File Overview/Data.)
 
