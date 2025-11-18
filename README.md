@@ -51,7 +51,13 @@ After importing the (original) XENON dataset, you'll find the "XENON" folder wit
 
 Feel free to explore the data (the original XENON dataset). The dataset is actually comprised of both `ReSUM.tar.gz` and `TPCLF.tar.gz` in the shared OneDrive, so be sure to merge them.
 
-Every unique event id represents one simulated neutron. There are multiple timesteps (time_ns), each with initial and ending position. (This is represented either as (`pre_x_mm`, `pre_y_mm`, `pre_z_mm`, `post_x_mm`, `post_y_mm`, `post_z_mm`) or (`vrt_x_mm`, `vrt_y_mm`, `vrt_z_mm`, `x_mm`, `y_mm`, `z_mm`) respectively) depending on the file. We also have kinetic energy (`energy_keV`), and the raw y value (`creatpro` or `tag` depending on the file).
+- Every unique event id represents one simulated neutron. 
+- There are multiple timesteps (time_ns), each with initial and ending position. (This is represented either as (`pre_x_mm`, `pre_y_mm`, `pre_z_mm`, `post_x_mm`, `post_y_mm`, `post_z_mm`) or (`vrt_x_mm`, `vrt_y_mm`, `vrt_z_mm`, `x_mm`, `y_mm`, `z_mm`) respectively) depending on the file. 
+- We also have kinetic energy (`energy_keV`), 
+- and the raw y value (`creatpro` or `tag` depending on the file).
+-- 1 (neutron reach scintillator in this timestep)
+-- 2 (neutron reach TPC in this timestep)
+-- 0 (otherwise)
 
 To preprocess the data, run `process_xenon_original_vars.py` and modify the line below depending on whether you want to process `only1`, `only2`, and/or `(1 and 2)`. (For the definitions of these see File Overview/Data.)
 
