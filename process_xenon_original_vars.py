@@ -236,7 +236,7 @@ def _work_scintorhf(args):
 def process_scintorlf(case='both'):
     case_name = case
     base_input = Path('/home/tidmad/bliu/XENON/ScintorLF')
-    base_output = Path(f'/home/tidmad/bliu/resum-xenon/new_data/{case_name}')
+    base_output = Path(f'/home/tidmad/bliu/resum-xenon/temp_new_data/{case_name}')
     lf_output = base_output / 'lf'
     lf_output.mkdir(parents=True, exist_ok=True)
 
@@ -263,7 +263,7 @@ def process_scintorlf(case='both'):
 def process_tpclf(case='both'):
     case_name = case
     base_input = Path('/home/tidmad/bliu/XENON/TPCLF')
-    base_output = Path(f'/home/tidmad/bliu/resum-xenon/new_data/{case_name}')
+    base_output = Path(f'/home/tidmad/bliu/resum-xenon/temp_new_data/{case_name}')
     temp_output = base_output / '.tpclf_temp'
     temp_output.mkdir(parents=True, exist_ok=True)
 
@@ -289,7 +289,7 @@ def process_tpclf(case='both'):
 def process_scintorhf(case='both'):
     case_name = case
     base_input = Path('/home/tidmad/bliu/XENON/ScintorHF')
-    base_output = Path(f'/home/tidmad/bliu/resum-xenon/new_data/{case_name}')
+    base_output = Path(f'/home/tidmad/bliu/resum-xenon/temp_new_data/{case_name}')
     hf_output = base_output / 'hf_temp_scintor'
     hf_output.mkdir(parents=True, exist_ok=True)
 
@@ -340,7 +340,7 @@ def process_scintorhf(case='both'):
 def process_tpchf(case='both'):
     case_name = case
     base_input = Path('/home/tidmad/bliu/XENON/TPCHF')
-    base_output = Path(f'/home/tidmad/bliu/resum-xenon/new_data/{case_name}')
+    base_output = Path(f'/home/tidmad/bliu/resum-xenon/temp_new_data/{case_name}')
     temp_output = base_output / '.tpchf_temp'
     temp_output.mkdir(parents=True, exist_ok=True)
 
@@ -366,7 +366,7 @@ def process_tpchf(case='both'):
 def combine_lf_data(case='both', shuffle=True, seed=SHUFFLE_SEED_DEFAULT):
     """Combine TPCLF + ScintorLF (already processed), optionally shuffle, and save."""
     case_name = case
-    base_output = Path(f'/home/tidmad/bliu/resum-xenon/new_data/{case_name}')
+    base_output = Path(f'/home/tidmad/bliu/resum-xenon/temp_new_data/{case_name}')
     lf_output = base_output / 'lf'
     temp_tpclf = base_output / '.tpclf_temp'
 
@@ -399,7 +399,7 @@ def combine_lf_data(case='both', shuffle=True, seed=SHUFFLE_SEED_DEFAULT):
 def combine_hf_data(case='both', shuffle=True, seed=SHUFFLE_SEED_DEFAULT):
     """Combine ScintorHF + TPCHF and save to final location."""
     case_name = case
-    base_output = Path(f'/home/tidmad/bliu/resum-xenon/new_data/{case_name}')
+    base_output = Path(f'/home/tidmad/bliu/resum-xenon/temp_new_data/{case_name}')
     hf_output = base_output / 'hf'
     hf_temp_scintor = base_output / 'hf_temp_scintor'
     hf_temp_tpchf = base_output / '.tpchf_temp'
@@ -460,7 +460,7 @@ def main():
     print("Processing cases: both (1 AND 2), only1, only2")
     print("="*70)
 
-    cases = ['only1', 'only2'] # 'both'
+    cases = ['only1', 'only2', 'both'] 
     
     for case in cases:
         print(f"\n\n{'#'*70}\nCASE: {case}\n{'#'*70}")
