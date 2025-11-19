@@ -459,7 +459,7 @@ def main():
     print("XENON Original Variables Preprocessing Pipeline")
     print("Processing cases: both (1 AND 2), only1, only2")
     print("="*70)
-
+ 
     cases = ['only1', 'only2', 'both'] 
     
     for case in cases:
