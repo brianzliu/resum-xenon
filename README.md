@@ -3,7 +3,7 @@
 ## File Overview
 
 ### Data
-The data is stored somewhat weirdly; in `resum-xenon/src/xenon/in/data` you'll find 4 different experiments. Although the old data directories are noted below, **the rest of the `README.md` will focus on instructions for processing the new data.** Find that the old preprocessing scripts are included for redundancy (i.e. those without [2]), while the main scripts like `conditional_neural_process_training_xenon.ipynb` are modified for the new data.
+The data is stored somewhat weirdly; in `resum-xenon/src/xenon/in/data` you'll find 4 different experiments. Although the old data directories are noted below, **the rest of the `README.md` will focus on instructions for processing the new data.** Find that the old preprocessing scripts are included for redundancy (i.e. those without the suffix "2"), while the main scripts like `conditional_neural_process_training_xenon.ipynb` are modified for the new data.
 
 #### Old Data
 - `only1` - Set preprocessed y value to be 1 when one raw neutron event's rows contains y value 1 (but not 2), otherwise 0 (out of raw y values 0, 1, or 2); this corresponds to neutron depositing energy in scintillator but not reaching TPC
