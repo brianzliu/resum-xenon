@@ -185,7 +185,7 @@ def main():
     print("=" * 80)
 
     # Load configuration
-    config_path = "../xenon/settings.yaml"
+    config_path = "../xenon/settings2.yaml"
     print(f"\nLoading configuration from: {config_path}")
 
     with open(config_path, "r") as f:

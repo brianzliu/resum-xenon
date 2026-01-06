@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.insert(0, '/home/tidmad/bliu/resum-xenon/src')
 
 # Load configuration
-with open("/home/tidmad/bliu/resum-xenon/src/xenon/settings.yaml", "r") as f:
+with open("/home/tidmad/bliu/resum-xenon/src/xenon/settings2.yaml", "r") as f:
     config_file = yaml.safe_load(f)
 
 # Extract settings
@@ -57,7 +57,7 @@ x_train_lf_cnp = data.loc[(data['fidelity']==0.) & (data['iteration']==0)][x_lab
 y_train_lf_cnp = data.loc[(data['fidelity']==0.) & (data['iteration']==0)]['y_cnp'].to_numpy().tolist()
 
 trainings_data = {"lf": [x_train_lf_cnp, y_train_lf_cnp], "hf": [x_train_hf_sim, y_train_hf_sim]}
-noise = {"lf": LF_cnp_noise, "hf": HF_sim_noise * 0.001}
+noise = {"lf": LF_cnp_noise, "hf": HF_sim_noise * 0.00000001}
 
 print(f"Training data loaded:")
 print(f"  LF samples: {len(x_train_lf_cnp)}")
@@ -99,6 +99,7 @@ gpy_linear_mf_model['multifidelity.Mat32.variance'].constrain_bounded(1e-6, 1e2)
 gpy_linear_mf_model['multifidelity.Mat32.lengthscale'].constrain_bounded(1e-2, 1e3)
 gpy_linear_mf_model['multifidelity.Mat32_1.variance'].constrain_bounded(1e-6, 1e2)
 gpy_linear_mf_model['multifidelity.Mat32_1.lengthscale'].constrain_bounded(1e-2, 1e3)
+
 gpy_linear_mf_model['multifidelity.scale'].constrain_bounded(1e-3, 1e2)
 
 if hasattr(gpy_linear_mf_model.mixed_noise.Gaussian_noise, 'unfix'):
@@ -106,9 +107,9 @@ if hasattr(gpy_linear_mf_model.mixed_noise.Gaussian_noise, 'unfix'):
     gpy_linear_mf_model.mixed_noise.Gaussian_noise_1.unfix()
 
     gpy_linear_mf_model.mixed_noise.Gaussian_noise.constrain_bounded(
-        noise['lf'] * 0.15, noise['lf'] * 1.85)
+        noise['lf'] * 0.99, noise['lf'] * 1.01)
     gpy_linear_mf_model.mixed_noise.Gaussian_noise_1.constrain_bounded(
-        noise['hf'] * 0.15, noise['hf'] * 1.85)
+        noise['hf'] * 0.99, noise['hf'] * 1.01)
 
 # Wrap and optimize
 print("Training the MFGP model (10 restarts)...")

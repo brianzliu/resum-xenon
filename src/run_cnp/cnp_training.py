@@ -30,7 +30,7 @@ except Exception as e:
 from resum.conditional_neural_process.data_generator import CNPRegressionDescription
 
 # %%
-with open("../xenon/settings.yaml", "r") as f:
+with open("../xenon/settings2.yaml", "r") as f:
     config_file = yaml.safe_load(f)
 
 TRAINING_EPOCHS = int(config_file["cnp_settings"]["training_epochs"]) # Total number of training points: training_iterations * batch_size * max_content_points

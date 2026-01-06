@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import glob
+import re
+import os
 from pathlib import Path
 from collections import defaultdict
 import seaborn as sns
@@ -23,7 +25,7 @@ from matplotlib.lines import Line2D
 from emukit.multi_fidelity.convert_lists_to_array import convert_x_list_to_array, convert_xy_lists_to_arrays
 
 
-with open("../xenon/settings.yaml", "r") as f:
+with open("../xenon/settings2.yaml", "r") as f:
     config_file = yaml.safe_load(f)
 
 PLOT_AFTER = int(config_file["cnp_settings"]["plot_after"])
@@ -70,11 +72,51 @@ class MFGPAnalyzer:
         self.output_dir = Path(output_dir) if output_dir else Path.cwd()
         self.output_dir.mkdir(exist_ok=True)
         
+        # Initialize default bounds
+        self.theta_min = [0, 0]
+        self.theta_max = [95, 102] # Default fallback values
+        
+        # specific logic to auto-load settings for bounds if available
+        try:
+            # Assuming standard project structure: src/run_mfgp/mfgp_visualizations.py -> src/xenon/settings2.yaml
+            # Go up two levels from this file's location
+            current_file = Path(__file__)
+            project_src = current_file.parent.parent 
+            settings_path = project_src / "xenon" / "settings2.yaml"
+            
+            if settings_path.exists():
+                with open(settings_path, 'r') as f:
+                    config = yaml.safe_load(f)
+                    if 'simulation_settings' in config:
+                        self.theta_min = config['simulation_settings'].get('theta_min', self.theta_min)
+                        self.theta_max = config['simulation_settings'].get('theta_max', self.theta_max)
+                        print(f"  Loaded simulation bounds from {settings_path}")
+        except Exception as e:
+            print(f"  Could not auto-load settings.yaml for bounds: {e}")
+        
         print(f"MFGPAnalyzer initialized:")
         print(f"  Output directory: {self.output_dir}")
         print(f"  Parameter labels: {self.x_labels}")
         print(f"  Target variable: {self.y_label_sim}")
         
+    def is_point_valid(self, x, y):
+        """
+        Check if a point (x, y) satisfies the geometric constraints.
+        Valid regions:
+        1. X < 35.65 AND Y > 75.6
+        2. 35.65 <= X < 89.35 AND Y > 65.0
+        3. X >= 89.35
+        """
+        c_x1, c_x2 = 35.65, 89.35
+        c_y1, c_y2 = 75.6, 65.0
+        
+        if x < c_x1:
+            return y > c_y1
+        elif x < c_x2:
+            return y > c_y2
+        else:
+            return True # X >= 89.35 is always valid in the plotting range logic
+            
     def load_and_process_csv_files(self, file_patterns, fidelity_filter=1.0, iteration_filter=0):
         """
         Load and process multiple CSV files to extract unique theta combinations.
@@ -421,52 +463,59 @@ class MFGPAnalyzer:
             print(f"±{sigma}σ: {total_within}/{total_points} ({percentage:.1f}%) | " +
                   f"Theoretical: {theoretical:.1f}% | Diff: {percentage-theoretical:+.1f}%")
 
-    def create_enhanced_contour_plots(self, processed_data, grid_steps=50, levels=25, save_plots=True, show_hf_training=True, hf_training_data_file=None):
+    def create_enhanced_contour_plots(self, processed_data, grid_steps=50, levels=25, save_plots=True, show_hf_training=True, hf_training_data_file=None, hf_validation_dir=None):
         """
         Create enhanced contour plots showing mean prediction and uncertainty with training data overlaid.
+        The grid is determined by the X values found in validation CSV files and evenly spaced Y values.
         
         Parameters:
         -----------
         processed_data : dict
             Dictionary returned by load_and_process_csv_files()
         grid_steps : int
-            Number of grid points for contour generation
+            Number of grid points for Y dimension (X is determined by files)
         levels : int
             Number of contour levels
         save_plots : bool
             Whether to save plots to disk
+        hf_validation_dir : str, optional
+            Directory containing validation CSV files to determine X-grid
             
         Returns:
         --------
         matplotlib.figure.Figure: The generated figure
         """
-        # Collect all data points from all files
-        all_x_data = []
-        all_y_data = []
-        for file_data in processed_data.values():
-            for combo_key, group_data in file_data['theta_groups'].items():
-                all_x_data.extend([[combo_key[0], combo_key[1]]] * len(group_data['y_values']))
-                all_y_data.extend(group_data['y_values'])
-        all_x_data = np.array(all_x_data)
+        # Determine grid from validation files
+        if hf_validation_dir:
+            val_dir = Path(hf_validation_dir)
+        else:
+            val_dir = Path("/home/tidmad/bliu/resum-xenon/src/xenon/in/data/new_both/validation/hf")
+            
+        # Force grid to use configuration bounds for consistent axes
+        if self.theta_max:
+             x_max = self.theta_max[0]
+             y_max = self.theta_max[1]
+             x_min = self.theta_min[0] if self.theta_min else 0
+             y_min = self.theta_min[1] if self.theta_min else 0
+        else:
+             x_max = 95
+             y_max = 102
+             x_min = 0
+             y_min = 0
+             
+        x_grid_vals = np.linspace(x_min, x_max, grid_steps)
+        y_grid_vals = np.linspace(y_min, y_max, grid_steps)
 
-        # Use full theta bounds from settings (scint_x: 0-60, scint_y: 0-45)
-        theta_min = [0, 0]  # scint_x_min, scint_y_min
-        theta_max = [60, 45]  # scint_x_max, scint_y_max
-        param_x_min, param_x_max = theta_min[1], theta_max[1]  # scint_y range for y-axis
-        param_y_min, param_y_max = theta_min[0], theta_max[0]  # scint_x range for x-axis
-
-        # Create prediction grid
-        x_vals = np.linspace(param_x_min, param_x_max, grid_steps)
-        y_vals = np.linspace(param_y_min, param_y_max, grid_steps)
-        Xg, Yg = np.meshgrid(x_vals, y_vals)
-        # Prepare points for prediction
-        points = []
-        for y in y_vals:
-            for x in x_vals:
-                points.append([y, x])
-        points = np.array(points)
+        # Create meshgrid: X-axis = scint_x, Y-axis = scint_y
+        Xg, Yg = np.meshgrid(x_grid_vals, y_grid_vals)
+        
+        # Prepare points for prediction: [scint_x, scint_y]
+        # Xg contains scint_x values, Yg contains scint_y values
+        points = np.column_stack([Xg.ravel(), Yg.ravel()])
+        
         fidelity_col = np.ones((len(points), 1))
         points_with_fidelity = np.hstack([points, fidelity_col])
+        
         # Get predictions
         mean_pred, var_pred = self.mf_model.predict(points_with_fidelity)
         std_pred = np.sqrt(var_pred)
@@ -480,123 +529,188 @@ class MFGPAnalyzer:
             exponent = 0
             scale_factor = 1
         
-        Z_mean = mean_pred.reshape(grid_steps, grid_steps) * scale_factor
-        Z_std = std_pred.reshape(grid_steps, grid_steps) * scale_factor
+        Z_mean = mean_pred.reshape(Xg.shape) * scale_factor
+        Z_std = std_pred.reshape(Xg.shape) * scale_factor
         
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6), constrained_layout=True)
+        
+        # 1. Mean Prediction Plot
         contour1 = ax1.contourf(Xg, Yg, Z_mean, levels=levels, cmap='viridis')
         cbar1 = fig.colorbar(contour1, ax=ax1)
         cbar1.set_label(rf"Predicted $y_{{\rm{{raw}}}}$ (mean) [$\times10^{{{exponent}}}$]", fontsize=12)
         ax1.contour(Xg, Yg, Z_mean, levels=levels, colors='black', alpha=0.3, linewidths=0.5)
-        for file_name, file_data in processed_data.items():
-            x_coords = []
-            y_coords = []
-            for combo_key in file_data['theta_groups'].keys():
-                x_coords.append(combo_key[1])
-                y_coords.append(combo_key[0])
-            # # Plot LF Training Data points (from filename coordinates)
-            # ax1.scatter(x_coords, y_coords, c='orange', s=100,
-            #             marker='^', edgecolors='white', linewidth=1.5,
-            #             label='LF Training Data', alpha=0.9, zorder=5)
+        
+        # Plot LF Training Data
+        lf_train_dir = Path("../xenon/in/data/original_vars/training/lf")
+        lf_x_coords = []
+        lf_y_coords = []
+        if lf_train_dir.exists():
+            import re
+            for lf_file in lf_train_dir.glob('*.csv'):
+                match = re.search(r'sim_X(\d+)_Y(\d+)', lf_file.name)
+                if match:
+                    # Match X to X-axis (scint_x), Y to Y-axis (scint_y)
+                    lf_x_coords.append(int(match.group(1))) 
+                    lf_y_coords.append(int(match.group(2)))
             
-            # Extract LF training data coordinates from filenames
-            lf_train_dir = Path("../xenon/in/data/original_vars/training/lf")
-            if lf_train_dir.exists():
-                import re
-                lf_x_coords = []
-                lf_y_coords = []
-                for lf_file in lf_train_dir.glob('*.csv'):
-                    match = re.search(r'sim_X(\d+)_Y(\d+)', lf_file.name)
-                    if match:
-                        lf_x_coords.append(int(match.group(2)))  # Y from filename
-                        lf_y_coords.append(int(match.group(1)))  # X from filename
-                
-                if lf_x_coords and lf_y_coords:
-                    ax1.scatter(lf_x_coords, lf_y_coords, c='orange', s=20,
-                               marker='^', edgecolors='white', linewidth=0.8,
-                               alpha=0.7, zorder=4, label='LF Training Data')
+            if lf_x_coords and lf_y_coords:
+                ax1.scatter(lf_x_coords, lf_y_coords, c='orange', s=20,
+                           marker='^', edgecolors='white', linewidth=0.8,
+                           alpha=0.7, zorder=4, label='LF Training Data')
 
-            # Optionally overlay HF training points (fidelity==1.0)
-            if show_hf_training:
-                source_file = hf_training_data_file if hf_training_data_file else file_data.get('file_path')
-                if source_file:
-                    try:
-                        iter_values = file_data['full_data']['iteration'].unique()
-                        iter_used = iter_values[0] if len(iter_values) else 0
-                        df_all = pd.read_csv(source_file)
-                        hf_df = df_all[(df_all['fidelity'] == 1.0) & (df_all['iteration'] == iter_used)]
-                        if not hf_df.empty:
-                            hf_unique = hf_df[self.x_labels].drop_duplicates()
-                            hf_x = [row[self.x_labels[1]] for _, row in hf_unique.iterrows()]
-                            hf_y = [row[self.x_labels[0]] for _, row in hf_unique.iterrows()]
-                            ax1.scatter(hf_x, hf_y, c='dodgerblue', s=20,
-                                        marker='^', edgecolors='white', linewidth=1.2,
-                                        label='HF Training Data', alpha=0.9, zorder=6)
-                    except Exception as e:
-                        print(f"  Could not load HF training data for contour plot: {e}")
+        # Plot HF Training Data
+        hf_x = []
+        hf_y = []
+        
+        if show_hf_training:
+            # 1. Scan the specific training directory (Highest Priority as per user request)
+            # This ensures we overlay the coordinates designated by the X and Y in filenames from the training dir
+            try:
+                training_dir = "/home/tidmad/bliu/resum-xenon/src/xenon/in/data/new_both/training/hf"
+                if os.path.exists(training_dir):
+                    print(f"  Scanning HF training dir: {training_dir}")
+                    sim_files = glob.glob(os.path.join(training_dir, "sim_*.csv"))
+                    existing_points = set(zip(hf_x, hf_y))
+                    
+                    for f in sim_files:
+                        # filename format: sim_X{val}_Y{val}.csv or sim_X{val}_Y{val}_ALL.csv
+                        match = re.search(r"sim_X(\d+)_Y(\d+)", os.path.basename(f))
+                        if match:
+                            x_val = int(match.group(1))
+                            y_val = int(match.group(2))
+                            if (x_val, y_val) not in existing_points:
+                                hf_x.append(x_val)
+                                hf_y.append(y_val)
+                                existing_points.add((x_val, y_val))
+                                
+                    print(f"  Found {len(hf_x)} HF training points from directory.")
+            except Exception as e:
+                print(f"  Warning: Failed to scan HF training directory: {e}")
 
+            # 2. If no data found yet, try loading from explicit file if provided
+            if not hf_x and hf_training_data_file:
+                try:
+                    df_all = pd.read_csv(hf_training_data_file)
+                    # Use provided file to filter for fidelity 1.0
+                    hf_df = df_all[(df_all['fidelity'] == 1.0) & (df_all['iteration'] == 0)]
+                    if not hf_df.empty:
+                        hf_unique = hf_df[self.x_labels].drop_duplicates()
+                        hf_x = [row[self.x_labels[0]] for _, row in hf_unique.iterrows()]
+                        hf_y = [row[self.x_labels[1]] for _, row in hf_unique.iterrows()]
+                except Exception as e:
+                    print(f"  Warning: Failed to load provided HF training file: {e}")
 
-        ax1.set_xlabel(self.x_labels[1], fontsize=12)
-        ax1.set_ylabel(self.x_labels[0], fontsize=12)
+            # 3. Fallback: Try to infer from processed_data (likely just current batch)
+            if not hf_x and processed_data:
+                try:
+                    # Logic to extract unique x/y from processed_data if available
+                    # This is a weak fallback but better than nothing
+                    pass 
+                except Exception:
+                    pass
+
+            if hf_x:
+                try:
+                    # Increased marker size and specific styling for better visibility
+                    ax1.scatter(hf_x, hf_y, c='dodgerblue', s=80,
+                                marker='^', edgecolors='white', linewidth=1.5,
+                                label='HF Training Data', alpha=1.0, zorder=10)
+                except Exception as e:
+                    print(f"  Could not plot HF training data: {e}")
+
+        # Label axes: X is now scint_x (x_labels[0]), Y is now scint_y (x_labels[1])
+        ax1.set_xlabel(self.x_labels[0], fontsize=12) 
+        ax1.set_ylabel(self.x_labels[1], fontsize=12)
         ax1.set_title('Mean Prediction', fontsize=14)
         ax1.legend(loc='upper right')
         ax1.grid(True, alpha=0.3)
+        
+        # 2. Uncertainty Plot
         contour2 = ax2.contourf(Xg, Yg, Z_std, levels=levels, cmap='Reds')
         cbar2 = fig.colorbar(contour2, ax=ax2)
         cbar2.set_label(rf"Uncertainty ($\sigma$) [$\times10^{{{exponent}}}$]", fontsize=12)
         ax2.contour(Xg, Yg, Z_std, levels=levels, colors='black', alpha=0.3, linewidths=0.5)
-        for file_name, file_data in processed_data.items():
-            x_coords = []
-            y_coords = []
-            for combo_key in file_data['theta_groups'].keys():
-                x_coords.append(combo_key[1])
-                y_coords.append(combo_key[0])
-            # # Plot LF Training Data points (from filename coordinates)
-            # ax2.scatter(x_coords, y_coords, c='orange', s=100,
-            #             marker='^', edgecolors='white', linewidth=1.5,
-            #             label='LF Training Data', alpha=0.9, zorder=5)
-            
-            # Extract LF training data coordinates from filenames
-            lf_train_dir = Path("../xenon/in/data/original_vars/training/lf")
-            if lf_train_dir.exists():
-                import re
-                lf_x_coords = []
-                lf_y_coords = []
-                for lf_file in lf_train_dir.glob('*.csv'):
-                    match = re.search(r'sim_X(\d+)_Y(\d+)', lf_file.name)
-                    if match:
-                        lf_x_coords.append(int(match.group(2)))  # Y from filename
-                        lf_y_coords.append(int(match.group(1)))  # X from filename
-                
-                if lf_x_coords and lf_y_coords:
-                    ax2.scatter(lf_x_coords, lf_y_coords, c='orange', s=20,
-                               marker='^', edgecolors='white', linewidth=0.8,
-                               alpha=0.7, zorder=4, label='LF Training Data')
+        
+        # Plot LF Training Data on Uncertainty Plot
+        if lf_x_coords and lf_y_coords:
+            ax2.scatter(lf_x_coords, lf_y_coords, c='orange', s=20,
+                       marker='^', edgecolors='white', linewidth=0.8,
+                       alpha=0.7, zorder=4, label='LF Training Data')
 
-            # Optionally overlay HF training points on uncertainty subplot as well
-            if show_hf_training:
-                source_file = hf_training_data_file if hf_training_data_file else file_data.get('file_path')
-                if source_file:
-                    try:
-                        iter_values = file_data['full_data']['iteration'].unique()
-                        iter_used = iter_values[0] if len(iter_values) else 0
-                        df_all = pd.read_csv(source_file)
-                        hf_df = df_all[(df_all['fidelity'] == 1.0) & (df_all['iteration'] == iter_used)]
-                        if not hf_df.empty:
-                            hf_unique = hf_df[self.x_labels].drop_duplicates()
-                            hf_x = [row[self.x_labels[1]] for _, row in hf_unique.iterrows()]
-                            hf_y = [row[self.x_labels[0]] for _, row in hf_unique.iterrows()]
-                            ax2.scatter(hf_x, hf_y, c='dodgerblue', s=20,
-                                        marker='^', edgecolors='white', linewidth=1.2,
-                                        label='HF Training Data', alpha=0.9, zorder=6)
-                    except Exception as e:
-                        print(f"  Could not load HF training data for contour plot: {e}")
+        # Plot HF Training Data on Uncertainty Plot
+        if show_hf_training and hf_x:
+             ax2.scatter(hf_x, hf_y, c='dodgerblue', s=80,
+                        marker='^', edgecolors='white', linewidth=1.5,
+                        label='HF Training Data', alpha=1.0, zorder=10)
 
-        ax2.set_xlabel(self.x_labels[1], fontsize=12)
-        ax2.set_ylabel(self.x_labels[0], fontsize=12)
+        ax2.set_xlabel(self.x_labels[0], fontsize=12)
+        ax2.set_ylabel(self.x_labels[1], fontsize=12)
         ax2.set_title('Prediction Uncertainty', fontsize=14)
         ax2.legend(loc='upper right')
         ax2.grid(True, alpha=0.3)
+        
+        # --- Overlay Constraints ---
+        def apply_constraints_overlay(ax):
+            # Constraint Constants
+            c_x1, c_x2 = 35.65, 89.35
+            c_y1, c_y2 = 75.6, 65.0
+            
+            # Determine plot limits to ensure fills cover everything
+            xlim = ax.get_xlim()
+            ylim = ax.get_ylim()
+            
+            # 1. Fill Forbidden Region (Red) - DISABLED per user request
+            # Region A: X < 35.65, Y < 75.6
+            # rect1 = Rectangle((xlim[0], ylim[0]), c_x1 - xlim[0], c_y1 - ylim[0],
+            #                 facecolor='red', alpha=0.1, zorder=1)
+            # ax.add_patch(rect1)
+            
+            # Region B: 35.65 <= X < 89.35, Y < 65.0
+            # rect2 = Rectangle((c_x1, ylim[0]), c_x2 - c_x1, c_y2 - ylim[0],
+            #                 facecolor='red', alpha=0.1, zorder=1)
+            # ax.add_patch(rect2)
+            
+            # 2. Fill Allowed Region (Green) - DISABLED per user request
+            # Region C: X < 35.65, Y > 75.6
+            # rect3 = Rectangle((xlim[0], c_y1), c_x1 - xlim[0], ylim[1] - c_y1,
+            #                 facecolor='green', alpha=0.1, zorder=1)
+            # ax.add_patch(rect3)
+            
+            # Region D: 35.65 <= X < 89.35, Y > 65.0
+            # rect4 = Rectangle((c_x1, c_y2), c_x2 - c_x1, ylim[1] - c_y2,
+            #                 facecolor='green', alpha=0.1, zorder=1)
+            # ax.add_patch(rect4)
+            
+            # Region E: X >= 89.35 (All valid)
+            # rect5 = Rectangle((c_x2, ylim[0]), xlim[1] - c_x2, ylim[1] - ylim[0],
+            #                 facecolor='green', alpha=0.1, zorder=1)
+            # ax.add_patch(rect5)
+            
+            # 3. Draw Boundaries
+            # Vertical dashed lines
+            ax.axvline(c_x1, color='red', linestyle='--', alpha=0.5, linewidth=1.5)
+            ax.axvline(c_x2, color='red', linestyle='--', alpha=0.5, linewidth=1.5)
+            
+            # Blue boundary line
+            line_x = [xlim[0], c_x1, c_x1, c_x2, c_x2, xlim[1]]
+            line_y = [c_y1, c_y1, c_y2, c_y2, ylim[0], ylim[0]]
+            ax.plot(line_x, line_y, color='blue', linewidth=1.5, alpha=0.8, zorder=2)
+            
+            # 4. Add Text Labels
+            # Allowed
+            font_props = dict(fontsize=11, fontweight='bold', alpha=0.6)
+            ax.text(c_x1 + 5, c_y1 + 5, "ALLOWED", color='green', **font_props)
+            
+            # Forbidden (center in the largest forbidden block)
+            ax.text(c_x1 + 5, c_y2 - 20, "FORBIDDEN", color='darkred', **font_props)
+            
+            # Ensure limits didn't change due to plotting elements
+            ax.set_xlim(xlim)
+            ax.set_ylim(ylim)
+
+        apply_constraints_overlay(ax1)
+        apply_constraints_overlay(ax2)
+        
         if save_plots:
             save_path = self.output_dir / f'{version}_enhanced_contour_analysis.png'
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
@@ -694,77 +808,274 @@ class MFGPAnalyzer:
         
         plt.show()
     
-    def plot_uncertainty_bands_across_thetas(self, predictions, processed_data, file_name=None, save_plot=True, include_hf_training=True, hf_training_data_file=None):
+    def plot_uncertainty_bands_across_thetas(self, predictions, processed_data, file_name=None, save_plot=True, include_hf_training=True, hf_training_data_file=None, validation_cnp_file=None, hf_validation_dir=None, lf_validation_dir=None):
         """
         Plot uncertainty bands across all theta values for a given file.
 
         Compact layout with condensed tick labels (ws|vt). Fixed overlapping x-axis labels
         by simplifying xlabel and removing bottom annotation.
+        
+        Parameters:
+        -----------
+        validation_cnp_file : str, optional
+            Path to validation CNP output file with HF mean data (for black dots) - Deprecated in favor of hf_validation_dir
+        hf_validation_dir : str, optional
+            Directory containing raw HF validation CSV files to calculate means from
+        lf_validation_dir : str, optional
+            Directory containing raw LF validation CSV files to calculate means from (default: /home/tidmad/bliu/resum-xenon/src/xenon/in/data/new_both/validation/lf)
         """
         if file_name is None:
             file_name = list(predictions.keys())[0]
         file_preds = predictions[file_name]
         file_proc_data = processed_data[file_name]
         sorted_thetas = sorted(file_preds.keys())
-        y_true_means = []
+        y_lf_means = []  # LF validation means (grey dots)
+        y_hf_means = []  # HF validation means from CNP file (black dots)
         y_pred_means = []
         y_pred_stds = []
+        x_coords = []  # Actual x coordinates (scint_x) for plotting
         ws_vals = []
         vt_vals = []
+        
+        # Load LF validation data from raw CSV files
+        lf_cnp_data = {}
+        # Default to known path if not provided
+        if lf_validation_dir is None:
+            lf_validation_dir = "/home/tidmad/bliu/resum-xenon/src/xenon/in/data/new_both/validation/lf"
+            
+        try:
+            lf_dir = Path(lf_validation_dir)
+            if lf_dir.exists():
+                print(f"Loading LF validation data from {lf_dir}...")
+                import re
+                for csv_file in lf_dir.glob("*.csv"):
+                    try:
+                        # Extract theta from filename for consistency
+                        match = re.search(r'sim_X(\d+)_Y(\d+)', csv_file.name)
+                        if match:
+                            scint_x = int(match.group(1))
+                            scint_y = int(match.group(2))
+                            theta_key = (scint_x, scint_y)
+                            
+                            # Read CSV for target value
+                            df = pd.read_csv(csv_file)
+                            # Check for tag_final first (standard for raw files), then fallback to y_label_sim
+                            if 'tag_final' in df.columns:
+                                mean_val = df['tag_final'].mean()
+                                lf_cnp_data[theta_key] = mean_val
+                            elif self.y_label_sim in df.columns:
+                                mean_val = df[self.y_label_sim].mean()
+                                lf_cnp_data[theta_key] = mean_val
+                    except Exception as e:
+                        print(f"  Error reading {csv_file.name}: {e}")
+                print(f"Loaded LF validation data for {len(lf_cnp_data)} theta combinations")
+            else:
+                print(f"Warning: LF validation directory not found: {lf_validation_dir}")
+        except Exception as e:
+            print(f"Warning: Could not load LF validation data from directory: {e}")
+
+        # Load HF validation data from raw CSV files if provided
+        hf_cnp_data = {}
+        if hf_validation_dir:
+            try:
+                hf_dir = Path(hf_validation_dir)
+                if hf_dir.exists():
+                    print(f"Loading HF validation data from {hf_dir}...")
+                    import re
+                    for csv_file in hf_dir.glob("*.csv"):
+                        try:
+                            # Extract theta from filename for consistency
+                            match = re.search(r'sim_X(\d+)_Y(\d+)', csv_file.name)
+                            if match:
+                                scint_x = int(match.group(1))
+                                scint_y = int(match.group(2))
+                                theta_key = (scint_x, scint_y)
+                                
+                                # Read CSV for target value
+                                df = pd.read_csv(csv_file)
+                                if 'tag_final' in df.columns:
+                                    mean_tag = df['tag_final'].mean()
+                                    hf_cnp_data[theta_key] = mean_tag
+                        except Exception as e:
+                            print(f"  Error reading {csv_file.name}: {e}")
+                    print(f"Loaded HF validation data for {len(hf_cnp_data)} theta combinations")
+                else:
+                    print(f"Warning: HF validation directory not found: {hf_validation_dir}")
+            except Exception as e:
+                print(f"Warning: Could not load HF validation data from directory: {e}")
+        # Fallback to CNP file if directory not provided/failed but file is provided
+        elif validation_cnp_file and not hf_cnp_data:
+            try:
+                df_hf = pd.read_csv(validation_cnp_file)
+                hf_df = df_hf[df_hf['fidelity'] == 1.0]
+                # Group by theta combination and get mean y_cnp
+                for _, row in hf_df.iterrows():
+                    theta_key = (row['scint_x'], row['scint_y'])
+                    if theta_key not in hf_cnp_data:
+                        hf_cnp_data[theta_key] = []
+                    hf_cnp_data[theta_key].append(row['y_cnp'])
+                # Average y_cnp for each theta
+                for theta_key in hf_cnp_data:
+                    hf_cnp_data[theta_key] = np.mean(hf_cnp_data[theta_key])
+                print(f"Loaded HF validation data for {len(hf_cnp_data)} theta combinations from {validation_cnp_file}")
+            except Exception as e:
+                print(f"Warning: Could not load HF validation data: {e}")
+        
+        # Use UNION of keys to ensure both predictions (bands) and HF/LF data (dots) are shown
+        all_keys = set(file_preds.keys())
+        if hf_cnp_data:
+            all_keys.update(hf_cnp_data.keys())
+        if lf_cnp_data:
+            all_keys.update(lf_cnp_data.keys())
+            
+        # Sort key logic: theta is (scint_x, scint_y)
+        # We want to sort primarily by scint_x, then scint_y
+        sorted_thetas = sorted(list(all_keys), key=lambda t: (t[0], t[1]))
+        
+        print(f"Plotting for {len(sorted_thetas)} theta combinations (Union of Prediction & HF Data)")
+        
         for theta in sorted_thetas:
-            ws_vals.append(theta[0])
-            vt_vals.append(theta[1])
-            y_true_values = file_proc_data['theta_groups'][theta]['y_values']
-            y_true_means.append(np.mean(y_true_values))
-            pred_data = file_preds[theta]
-            y_pred_means.append(pred_data['y_pred_mean'])
-            y_pred_stds.append(pred_data['y_pred_std'])
-        y_true_means = np.array(y_true_means)
+            x_coords.append(theta[0])  # scint_x coordinate for X-axis
+            ws_vals.append(theta[0])  # scint_x
+            vt_vals.append(theta[1])  # scint_y
+            
+            # Get LF validation data if available
+            if theta in lf_cnp_data:
+                y_lf_means.append(lf_cnp_data[theta])
+            elif theta in file_proc_data['theta_groups']:
+                y_lf_values = file_proc_data['theta_groups'][theta]['y_values']
+                y_lf_means.append(np.mean(y_lf_values))
+            else:
+                y_lf_means.append(np.nan)
+            
+            # Get HF mean if available
+            if theta in hf_cnp_data:
+                y_hf_means.append(hf_cnp_data[theta])
+            else:
+                y_hf_means.append(np.nan)
+            
+            # Get Prediction data
+            if theta in file_preds:
+                y_pred_means.append(file_preds[theta]['y_pred_mean'])
+                y_pred_stds.append(file_preds[theta]['y_pred_std'])
+            else:
+                # Generate prediction on the spot if missing from initial batch
+                # Construct input vector: [scint_x, scint_y, fidelity=1.0]
+                x_pred = np.array([[theta[0], theta[1], 1.0]])
+                mean_pred, var_pred = self.mf_model.predict(x_pred)
+                std_pred = np.sqrt(var_pred)
+                y_pred_means.append(mean_pred[0, 0])
+                y_pred_stds.append(std_pred[0, 0])
+                
         y_pred_means = np.array(y_pred_means)
         y_pred_stds = np.array(y_pred_stds)
+        y_lf_means = np.array(y_lf_means)
+        y_hf_means = np.array(y_hf_means)
+        
         n_thetas = len(sorted_thetas)
-        x_idx = np.arange(n_thetas)
-        fig_width = min(14, max(8, 2 + 0.18 * n_thetas))
+        
+        # Use simple integer indexing for the x-axis to evenly space the groups
+        plot_indices = np.arange(n_thetas)
+        
+        # Prepare fine-grained data for smoother bands
+        fine_indices = []
+        fine_pred_means = []
+        fine_pred_stds = []
+        
+        steps_per_interval = 50  # Number of intermediate points
+        
+        for i in range(n_thetas):
+            # 1. Add the exact point i
+            fine_indices.append(float(i))
+            fine_pred_means.append(y_pred_means[i])
+            fine_pred_stds.append(y_pred_stds[i])
+            
+            # 2. Interpolate between i and i+1 if in the same scint_x group
+            if i < n_thetas - 1:
+                t1 = sorted_thetas[i]
+                t2 = sorted_thetas[i+1]
+                
+                if t1[0] == t2[0]: # Same scint_x
+                    # Interpolate scint_y
+                    y_start = t1[1]
+                    y_end = t2[1]
+                    
+                    # Generate intermediate y values (excluding endpoints)
+                    y_interps = np.linspace(y_start, y_end, steps_per_interval + 2)[1:-1]
+                    
+                    # Prepare input for prediction: [scint_x, y_interp, fidelity=1.0]
+                    X_new = np.column_stack([
+                        np.full(len(y_interps), t1[0]), # scint_x constant
+                        y_interps,                      # scint_y varying
+                        np.ones(len(y_interps))         # fidelity HF
+                    ])
+                    
+                    # Batch prediction
+                    m_new, v_new = self.mf_model.predict(X_new)
+                    std_new = np.sqrt(v_new).flatten()
+                    mean_new = m_new.flatten()
+                    
+                    # Calculate fractional indices
+                    idx_interps = np.linspace(float(i), float(i+1), steps_per_interval + 2)[1:-1]
+                    
+                    fine_indices.extend(idx_interps)
+                    fine_pred_means.extend(mean_new)
+                    fine_pred_stds.extend(std_new)
+        
+        fine_indices = np.array(fine_indices)
+        fine_pred_means = np.array(fine_pred_means)
+        fine_pred_stds = np.array(fine_pred_stds)
+
+        # Adjust figure width based on number of points
+        fig_width = min(20, max(10, 2 + 0.25 * n_thetas))
         fig_height = 5.5
+        
+        # --- 1. Main Plot ---
         plt.figure(figsize=(fig_width, fig_height))
         ax = plt.gca()
-        ax.fill_between(x_idx, y_pred_means - 3 * y_pred_stds, y_pred_means + 3 * y_pred_stds,
+        
+        # Plot bands using FINE indices
+        ax.fill_between(fine_indices, fine_pred_means - 3 * fine_pred_stds, fine_pred_means + 3 * fine_pred_stds,
                          facecolor='r', alpha=0.1, label='±3σ')
-        ax.fill_between(x_idx, y_pred_means - 2 * y_pred_stds, y_pred_means + 2 * y_pred_stds,
+        ax.fill_between(fine_indices, fine_pred_means - 2 * fine_pred_stds, fine_pred_means + 2 * fine_pred_stds,
                          facecolor='y', alpha=0.15, label='±2σ')
-        ax.fill_between(x_idx, y_pred_means - 1 * y_pred_stds, y_pred_means + 1 * y_pred_stds,
+        ax.fill_between(fine_indices, fine_pred_means - 1 * fine_pred_stds, fine_pred_means + 1 * fine_pred_stds,
                          facecolor='g', alpha=0.2, label='RESuM ±1σ')
-        # changed point color to black (edge white for consistency with contour plots)
-        ax.scatter(x_idx, y_true_means, color='black', linewidth=0.6,
-                   s=28, label='LF Validation Mean', zorder=5)
+                         
+        # Plot dots using ORIGINAL integer indices (Validation Data)
+        if len(y_hf_means) > 0 and not np.all(np.isnan(y_hf_means)):
+            ax.scatter(plot_indices, y_hf_means, color='black', linewidth=0.6,
+                       s=28, label='HF Validation Mean', zorder=5)
+        ax.scatter(plot_indices, y_lf_means, color='grey', linewidth=0.6,
+                   s=28, label='LF Validation Mean', zorder=4)
+                   
+        # Setup labels
         def choose_fmt(vals):
             arr = np.asarray(vals)
+            if len(arr) == 0: return '{:.1f}'
             if np.all(np.abs(arr - np.round(arr)) < 1e-6):
                 return '{:.0f}'
             return '{:.1f}'
+            
         ws_fmt = choose_fmt(ws_vals)
         vt_fmt = choose_fmt(vt_vals)
+        # Construct label strings "x, y"
         base_labels = [f"{ws_fmt.format(ws)}, {vt_fmt.format(vt)}" for ws, vt in zip(ws_vals, vt_vals)]
-        if n_thetas > 45:
-            step = int(np.ceil(n_thetas / 45))
-        elif n_thetas > 30:
-            step = 2
-        else:
-            step = 1
+        
+        
+        # Determine step for sparse labeling if too many points - NOW DISABLED to show all
+        step = 1
+            
         display_labels = [lab if (i % step == 0) else '' for i, lab in enumerate(base_labels)]
-        ax.set_xticks(x_idx)
-        ax.set_xticklabels(display_labels, rotation=55, ha='right', fontsize=8)
-        if n_thetas <= 120:
-            last_ws = ws_vals[0]
-            for i, ws in enumerate(ws_vals):
-                if ws != last_ws:
-                    ax.axvline(i - 0.5, color='gray', linestyle=':', alpha=0.25, linewidth=0.8)
-                    last_ws = ws
+        
+        # Set ticks at integer indices
+        ax.set_xticks(plot_indices)
+        ax.set_xticklabels(display_labels, rotation=90, ha='center', fontsize=6)
         ax.set_xlabel(f"{self.x_labels[0]}, {self.x_labels[1]}")
         ax.set_ylabel(f'Average {self.y_label_sim}')
 
         handles, labels = ax.get_legend_handles_labels()
-        desired_order = ['LF Validation Mean', 'RESuM ±1σ', '±2σ', '±3σ']
+        desired_order = ['HF Validation Mean', 'LF Validation Mean', 'RESuM ±1σ', '±2σ', '±3σ']
         order_map = {label: i for i, label in enumerate(desired_order)}
         try:
             sorted_handles_labels = sorted(zip(handles, labels), key=lambda x: order_map.get(x[1], 99))
@@ -773,24 +1084,48 @@ class MFGPAnalyzer:
         except Exception:
             ax.legend(ncol=4, loc='upper right', fontsize=9)
         ax.grid(True, alpha=0.3)
-        y_min = min(np.min(y_true_means), np.min(y_pred_means - 3 * y_pred_stds))
-        y_max = max(np.max(y_true_means), np.max(y_pred_means + 3 * y_pred_stds))
+        
+        # Add vertical separators for scint_x changes
+        prev_x = sorted_thetas[0][0]
+        for i in range(1, n_thetas):
+            curr_x = sorted_thetas[i][0]
+            if curr_x != prev_x:
+                midpoint = i - 0.5
+                ax.axvline(x=midpoint, color='gray', linestyle='--', alpha=0.5, linewidth=1.0)
+                # Ensure the label for the first point of the new group is shown if sparse labeling was used (not currently)
+                prev_x = curr_x
+        
+        # Y-limits
+        all_y_values = [y for y in y_lf_means if not np.isnan(y)]
+        all_y_values.extend([y for y in (y_pred_means - 3 * y_pred_stds) if not np.isnan(y)])
+        all_y_values.extend([y for y in (y_pred_means + 3 * y_pred_stds) if not np.isnan(y)])
+        if len(y_hf_means) > 0:
+            all_y_values.extend([y for y in y_hf_means if not np.isnan(y)])
+        if len(all_y_values) == 0:
+            all_y_values = [0, 1] 
+        y_min = min(all_y_values)
+        y_max = max(all_y_values)
         y_range = y_max - y_min if y_max > y_min else 1.0
         ax.set_ylim(y_min - 0.05 * y_range, y_max + 0.08 * y_range)
+        
+        # Calculation coverage text (using HF means)
         coverage_text = []
+        # Filter for valid HF data
+        valid_indices = [i for i in range(len(y_hf_means)) if not np.isnan(y_hf_means[i])]
+        total_count = len(valid_indices)
+        
         for sigma in [1, 2, 3]:
             within_sigma = 0
-            for i in range(n_thetas):
+            for i in valid_indices:
                 lower = y_pred_means[i] - sigma * y_pred_stds[i]
                 upper = y_pred_means[i] + sigma * y_pred_stds[i]
-                if lower <= y_true_means[i] <= upper:
+                if lower <= y_hf_means[i] <= upper:
                     within_sigma += 1
-            pct = 100 * within_sigma / n_thetas if n_thetas else 0.0
-            coverage_text.append(f"±{sigma}σ: {within_sigma}/{n_thetas} ({pct:.1f}%)")
-        text_str = "Coverage:\n" + "\n".join(coverage_text)
+            pct = 100 * within_sigma / total_count if total_count else 0.0
+            coverage_text.append(f"±{sigma}σ: {within_sigma}/{total_count} ({pct:.1f}%)")
+        text_str = "Coverage (vs HF):\n" + "\n".join(coverage_text)
         ax.text(0.01, 0.99, text_str, transform=ax.transAxes, va='top',
                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.9), fontsize=9, family='monospace')
-
 
         plt.tight_layout()
         if save_plot:
@@ -800,10 +1135,71 @@ class MFGPAnalyzer:
             print(f"    Saved plot: {save_path}")
         plt.show()
 
+        # --- 2. Zoomed-in Plot ---
+        plt.figure(figsize=(fig_width, fig_height))
+        ax = plt.gca()
+        # Use FINE indices for bands
+        ax.fill_between(fine_indices, fine_pred_means - 3 * fine_pred_stds, fine_pred_means + 3 * fine_pred_stds,
+                         facecolor='r', alpha=0.1, label='±3σ')
+        ax.fill_between(fine_indices, fine_pred_means - 2 * fine_pred_stds, fine_pred_means + 2 * fine_pred_stds,
+                         facecolor='y', alpha=0.15, label='±2σ')
+        ax.fill_between(fine_indices, fine_pred_means - 1 * fine_pred_stds, fine_pred_means + 1 * fine_pred_stds,
+                         facecolor='g', alpha=0.2, label='RESuM ±1σ')
+        
+        if len(y_hf_means) > 0 and not np.all(np.isnan(y_hf_means)):
+            ax.scatter(plot_indices, y_hf_means, color='black', linewidth=0.6,
+                       s=28, label='HF Validation Mean', zorder=5)
+        ax.scatter(plot_indices, y_lf_means, color='grey', linewidth=0.6,
+                   s=28, label='LF Validation Mean', zorder=4)
+                   
+        ax.set_xticks(plot_indices)
+        ax.set_xticklabels(display_labels, rotation=90, ha='center', fontsize=6)
+        ax.set_xlabel(f"{self.x_labels[0]}, {self.x_labels[1]}")
+        ax.set_ylabel(f'Average {self.y_label_sim}')
+
+        # Re-use legend logic
+        handles, labels = ax.get_legend_handles_labels()
+        # Same order
+        sorted_handles_labels = sorted(zip(handles, labels), key=lambda x: order_map.get(x[1], 99))
+        sorted_handles, sorted_labels = zip(*sorted_handles_labels)
+        ax.legend(sorted_handles, sorted_labels, ncol=4, loc='upper right', fontsize=9)
+        
+        ax.grid(True, alpha=0.3)
+        
+        # Add vertical separators for scint_x changes (Zoomed plot)
+        prev_x = sorted_thetas[0][0]
+        for i in range(1, n_thetas):
+            curr_x = sorted_thetas[i][0]
+            if curr_x != prev_x:
+                midpoint = i - 0.5
+                ax.axvline(x=midpoint, color='gray', linestyle='--', alpha=0.5, linewidth=1.0)
+                prev_x = curr_x
+        
+        # Optimize y-limits for bands
+        bands_y_values = [y for y in (y_pred_means - 3 * y_pred_stds) if not np.isnan(y)]
+        bands_y_values.extend([y for y in (y_pred_means + 3 * y_pred_stds) if not np.isnan(y)])
+        if len(bands_y_values) == 0:
+            bands_y_values = [0, 1] 
+        y_min_zoomed = min(bands_y_values)
+        y_max_zoomed = max(bands_y_values)
+        y_range_zoomed = y_max_zoomed - y_min_zoomed if y_max_zoomed > y_min_zoomed else 1.0
+        
+        ax.set_ylim(y_min_zoomed - 0.1 * y_range_zoomed, y_max_zoomed + 0.1 * y_range_zoomed)
+        ax.text(0.01, 0.99, text_str, transform=ax.transAxes, va='top',
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.9), fontsize=9, family='monospace')
+        
+        plt.tight_layout()
+        if save_plot:
+            filename_zoomed = f'uncertainty_bands_across_thetas_zoomed_{Path(file_name).stem}.png'
+            save_path_zoomed = self.output_dir / filename_zoomed
+            plt.savefig(save_path_zoomed, dpi=300, bbox_inches='tight')
+            print(f"    Saved zoomed plot: {save_path_zoomed}")
+        plt.show()
+
     def run_complete_analysis(self, file_patterns, fidelity_filter=1.0, iteration_filter=0, 
                             plot_individual_groups=True, save_all_plots=True, 
                             show_hf_training=True, include_hf_training=True,
-                            hf_training_data_file=None):
+                            hf_training_data_file=None, validation_cnp_file=None, hf_validation_dir=None, lf_validation_dir=None):
         """
         Run the complete automated analysis pipeline.
         
@@ -825,6 +1221,12 @@ class MFGPAnalyzer:
             Whether to include HF training data in across-theta plots (default: True)
         hf_training_data_file : str, optional
             Path to a separate file containing HF training data (default: None)
+        validation_cnp_file : str, optional
+            Path to validation CNP output file with HF mean data (default: None) - Deprecated
+        hf_validation_dir : str, optional
+            Directory containing raw HF validation CSV files to calculate means from
+        lf_validation_dir : str, optional
+            Directory containing raw LF validation CSV files to calculate means from
             
         Returns:
         --------
@@ -869,7 +1271,8 @@ class MFGPAnalyzer:
         print("\n6. Creating enhanced contour analysis...")
         self.create_enhanced_contour_plots(processed_data, save_plots=save_all_plots, 
                                           show_hf_training=show_hf_training,
-                                          hf_training_data_file=hf_training_data_file)
+                                          hf_training_data_file=hf_training_data_file,
+                                          hf_validation_dir=hf_validation_dir)
         
         # Step 7: Create prediction vs true plots
         print("\n7. Creating prediction vs true value plots...")
@@ -881,7 +1284,164 @@ class MFGPAnalyzer:
         for file_name in predictions.keys():
             self.plot_uncertainty_bands_across_thetas(predictions, processed_data, file_name, 
                                                      save_all_plots, include_hf_training=include_hf_training,
-                                                     hf_training_data_file=hf_training_data_file)
+                                                     hf_training_data_file=hf_training_data_file,
+                                                     validation_cnp_file=validation_cnp_file,
+                                                     hf_validation_dir=hf_validation_dir,
+                                                     lf_validation_dir=lf_validation_dir)
+
+
+
+        # Step 9: Find and print highest valid average
+        print("\n9. Finding highest valid average y_raw...")
+        
+        # Aggregate all known averages
+        all_averages = {} # Theta -> Mean Value
+        
+        # 1. From Predictions (Batch Data)
+        for fname, fpreds in predictions.items():
+            for theta, pdata in fpreds.items():
+                if theta not in all_averages:
+                    # predictions['y_true'] are the actual values from the input CSV
+                    all_averages[theta] = np.mean(pdata['y_true'])
+        
+        # 2. From HF Validation Dir
+        if hf_validation_dir and Path(hf_validation_dir).exists():
+            import re
+            for csv_file in Path(hf_validation_dir).glob("*.csv"):
+                match = re.search(r'sim_X(\d+)_Y(\d+)', csv_file.name)
+                if match:
+                    theta = (int(match.group(1)), int(match.group(2)))
+                    try:
+                        df = pd.read_csv(csv_file)
+                        val = df['tag_final'].mean() if 'tag_final' in df.columns else (df[self.y_label_sim].mean() if self.y_label_sim in df.columns else None)
+                        if val is not None:
+                            all_averages[theta] = val
+                    except: pass
+
+        # 3. From LF Validation Dir
+        # Default if not provided
+        if lf_validation_dir is None:
+             lf_validation_dir = "/home/tidmad/bliu/resum-xenon/src/xenon/in/data/new_both/validation/lf"
+        
+        if lf_validation_dir and Path(lf_validation_dir).exists():
+            import re
+            for csv_file in Path(lf_validation_dir).glob("*.csv"):
+                match = re.search(r'sim_X(\d+)_Y(\d+)', csv_file.name)
+                if match:
+                    theta = (int(match.group(1)), int(match.group(2)))
+                    # Prefer HF data if we already found it, but if it's new (LF only), add it
+                    if theta not in all_averages:
+                        try:
+                            df = pd.read_csv(csv_file)
+                            val = df['tag_final'].mean() if 'tag_final' in df.columns else (df[self.y_label_sim].mean() if self.y_label_sim in df.columns else None)
+                            if val is not None:
+                                all_averages[theta] = val
+                                all_averages[theta] = val
+                        except: pass
+                        
+        # 4. From Training Directories (Auto-scan)
+        training_dirs = [
+            "/home/tidmad/bliu/resum-xenon/src/xenon/in/data/new_both/training/hf",
+            "/home/tidmad/bliu/resum-xenon/src/xenon/in/data/new_both/training/lf"
+        ]
+        for t_dir in training_dirs:
+            if Path(t_dir).exists():
+                for csv_file in Path(t_dir).glob("*.csv"):
+                    match = re.search(r'sim_X(\d+)_Y(\d+)', csv_file.name)
+                    if match:
+                        theta = (int(match.group(1)), int(match.group(2)))
+                        if theta not in all_averages:
+                            try:
+                                df = pd.read_csv(csv_file, usecols=['tag_final'])
+                                if 'tag_final' in df.columns:
+                                    all_averages[theta] = df['tag_final'].mean()
+                            except: pass
+        
+        # Filter and Find Max
+        valid_points = []
+        for theta, avg_val in all_averages.items():
+            x, y = theta[0], theta[1]
+            if self.is_point_valid(x, y):
+                valid_points.append((theta, avg_val))
+                
+        if valid_points:
+            # Sort by value descending
+            valid_points.sort(key=lambda x: x[1], reverse=True)
+            max_theta, max_val = valid_points[0]
+            
+            print("\n" + "="*60)
+            print("HIGHEST VALID AVERAGE y_raw")
+            print("="*60)
+            print(f"Theta (X, Y): {max_theta}")
+            print(f"Average Value: {max_val:.8f}")
+            print(f"Number of valid points checked: {len(valid_points)}")
+            
+            print("\nTop 5 Valid Predictions:")
+            for t, v in valid_points[:5]:
+                print(f"  Theta {t}: {v:.8f}")
+        else:
+            print("No valid points found satisfying the constraints.")
+
+        # Step 10: Grid Search for Highest Predicted Value
+        print("\n10. Grid Search for Highest Predicted Value (Continuous Domain)...")
+        # Define grid based on bounds
+        x_min, x_max = (0, 100)
+        y_min, y_max = (0, 100)
+        
+        # Try to use instance bounds if they look reasonable (not default 0,0)
+        if hasattr(self, 'theta_min') and hasattr(self, 'theta_max'):
+             if self.theta_max[0] > 0:
+                 x_min, y_min = self.theta_min[0], self.theta_min[1]
+                 x_max, y_max = self.theta_max[0], self.theta_max[1]
+        
+        grid_res = 100 # 100x100 = 10,000 points
+        x_grid = np.linspace(x_min, x_max, grid_res)
+        y_grid = np.linspace(y_min, y_max, grid_res)
+        
+        # Create mesh
+        X_mesh, Y_mesh = np.meshgrid(x_grid, y_grid)
+        grid_points = np.column_stack([X_mesh.ravel(), Y_mesh.ravel()])
+        
+        # Predict
+        # Add fidelity column
+        grid_points_w_fid = np.hstack([grid_points, np.ones((len(grid_points), 1))])
+        
+        try:
+            mean_pred, var_pred = self.mf_model.predict(grid_points_w_fid)
+            std_pred = np.sqrt(var_pred)
+            
+            # Filter and find max
+            valid_preds = []
+            for i in range(len(grid_points)):
+                x, y = grid_points[i]
+                if self.is_point_valid(x, y):
+                    valid_preds.append({
+                        'theta': (x, y),
+                        'mean': mean_pred[i, 0],
+                        'std': std_pred[i, 0]
+                    })
+            
+            if valid_preds:
+                valid_preds.sort(key=lambda x: x['mean'], reverse=True)
+                best = valid_preds[0]
+                
+                print("\n" + "="*60)
+                print("HIGHEST PREDICTED VALUE (MODEL GRID SEARCH)")
+                print("="*60)
+                print(f"Grid Resolution: {grid_res}x{grid_res} ({len(grid_points)} points)")
+                print(f"Valid Points: {len(valid_preds)}")
+                print(f"Theta (X, Y): ({best['theta'][0]:.4f}, {best['theta'][1]:.4f})")
+                print(f"Predicted Mean: {best['mean']:.8f}")
+                print(f"Predicted Std:  {best['std']:.8f}")
+                
+                print("\nTop 5 Valid Predictions:")
+                for p in valid_preds[:5]:
+                    print(f"  Theta ({p['theta'][0]:.2f}, {p['theta'][1]:.2f}): {p['mean']:.8f}")
+            else:
+                 print("No valid points found in grid search.")
+                 
+        except Exception as e:
+            print(f"Error during grid search: {e}")
 
         print("\n" + "="*80)
         print("ANALYSIS COMPLETE!")

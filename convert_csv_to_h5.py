@@ -102,7 +102,7 @@ def convert_directory(input_dir, fidelity_value):
 
 def main():
     """Main conversion function."""
-    base_path = Path('/home/tidmad/bliu/resum-xenon/src/xenon/in/data/only2')
+    base_path = Path('/home/tidmad/bliu/resum-xenon/src/xenon/in/data/new_both')
 
     # Define directories and their fidelity levels
     directories = [

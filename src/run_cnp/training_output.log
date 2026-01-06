@@ -1,0 +1,212 @@
+nohup: ignoring input
+Using device: cuda
+Data Augmentation in Progress: Applying transformations...
+  0%|          | 0/202 [00:00<?, ?it/s]100%|██████████| 202/202 [00:00<00:00, 4161.73it/s]
+Filtered out 1 files with no samples
+Finished full dataset pass. Starting new epoch! 
+2025-12-01 11:36:40 Iteration: 0/0, train loss: 0.8067 (vs BCE 0.7530)
+2025-12-01 11:36:40, Iteration: 0, test loss: 0.9740 (vs BCE 1.0127)
+2025-12-01 11:39:17 Iteration: 0/1000, train loss: 0.6934 (vs BCE 0.5327)
+2025-12-01 11:39:17, Iteration: 1000, test loss: 0.6178 (vs BCE 0.2576)
+2025-12-01 11:41:56 Iteration: 0/2000, train loss: 0.5677 (vs BCE 0.1855)
+2025-12-01 11:41:56, Iteration: 2000, test loss: 0.6833 (vs BCE 0.4066)
+2025-12-01 11:44:34 Iteration: 0/3000, train loss: 0.6881 (vs BCE 0.5213)
+2025-12-01 11:44:34, Iteration: 3000, test loss: 0.6044 (vs BCE 0.1992)
+2025-12-01 11:47:12 Iteration: 0/4000, train loss: 0.6715 (vs BCE 0.4819)
+2025-12-01 11:47:12, Iteration: 4000, test loss: 0.6340 (vs BCE 0.2738)
+Data Augmentation in Progress: Applying transformations...
+  0%|          | 0/202 [00:00<?, ?it/s]100%|██████████| 202/202 [00:00<00:00, 3737.84it/s]
+Filtered out 1 files with no samples
+Finished full dataset pass. Starting new epoch! 
+2025-12-01 11:49:48 Iteration: 1/5000, train loss: 0.5562 (vs BCE 0.1504)
+2025-12-01 11:49:48, Iteration: 5000, test loss: 0.6275 (vs BCE 0.2507)
+2025-12-01 11:52:25 Iteration: 1/6000, train loss: 0.6716 (vs BCE 0.4820)
+2025-12-01 11:52:25, Iteration: 6000, test loss: 0.6336 (vs BCE 0.2628)
+2025-12-01 11:55:03 Iteration: 1/7000, train loss: 0.6572 (vs BCE 0.4434)
+2025-12-01 11:55:03, Iteration: 7000, test loss: 0.6410 (vs BCE 0.2784)
+2025-12-01 11:57:41 Iteration: 1/8000, train loss: 0.5658 (vs BCE 0.1746)
+2025-12-01 11:57:41, Iteration: 8000, test loss: 0.6251 (vs BCE 0.2375)
+2025-12-01 12:00:17 Iteration: 1/9000, train loss: 0.6683 (vs BCE 0.4622)
+2025-12-01 12:00:17, Iteration: 9000, test loss: 0.6305 (vs BCE 0.2487)
+Data Augmentation in Progress: Applying transformations...
+  0%|          | 0/202 [00:00<?, ?it/s]100%|██████████| 202/202 [00:00<00:00, 4110.11it/s]
+Filtered out 1 files with no samples
+Finished full dataset pass. Starting new epoch! 
+2025-12-01 12:02:58 Iteration: 2/10000, train loss: 0.6472 (vs BCE 0.4178)
+2025-12-01 12:02:58, Iteration: 10000, test loss: 0.6668 (vs BCE 0.3455)
+2025-12-01 12:05:29 Iteration: 2/11000, train loss: 0.5547 (vs BCE 0.1624)
+2025-12-01 12:05:29, Iteration: 11000, test loss: 0.6331 (vs BCE 0.2522)
+2025-12-01 12:08:02 Iteration: 2/12000, train loss: 0.6832 (vs BCE 0.5018)
+2025-12-01 12:08:02, Iteration: 12000, test loss: 0.6314 (vs BCE 0.2530)
+2025-12-01 12:10:34 Iteration: 2/13000, train loss: 0.6487 (vs BCE 0.4119)
+2025-12-01 12:10:34, Iteration: 13000, test loss: 0.6372 (vs BCE 0.2709)
+2025-12-01 12:13:01 Iteration: 2/14000, train loss: 0.5542 (vs BCE 0.1132)
+2025-12-01 12:13:01, Iteration: 14000, test loss: 0.6894 (vs BCE 0.4082)
+Data Augmentation in Progress: Applying transformations...
+  0%|          | 0/202 [00:00<?, ?it/s]100%|██████████| 202/202 [00:00<00:00, 4140.56it/s]
+Filtered out 1 files with no samples
+Finished full dataset pass. Starting new epoch! 
+2025-12-01 12:15:30 Iteration: 3/15000, train loss: 0.6493 (vs BCE 0.4183)
+2025-12-01 12:15:30, Iteration: 15000, test loss: 0.6831 (vs BCE 0.3940)
+2025-12-01 12:17:59 Iteration: 3/16000, train loss: 0.6308 (vs BCE 0.3782)
+2025-12-01 12:17:59, Iteration: 16000, test loss: 0.6705 (vs BCE 0.3628)
+2025-12-01 12:20:30 Iteration: 3/17000, train loss: 0.5553 (vs BCE 0.1917)
+2025-12-01 12:20:30, Iteration: 17000, test loss: 0.7191 (vs BCE 0.4844)
+2025-12-01 12:22:59 Iteration: 3/18000, train loss: 0.6464 (vs BCE 0.4173)
+2025-12-01 12:22:59, Iteration: 18000, test loss: 0.6844 (vs BCE 0.3957)
+2025-12-01 12:25:28 Iteration: 3/19000, train loss: 0.6320 (vs BCE 0.3862)
+2025-12-01 12:25:28, Iteration: 19000, test loss: 0.6706 (vs BCE 0.3670)
+Data Augmentation in Progress: Applying transformations...
+  0%|          | 0/202 [00:00<?, ?it/s]100%|██████████| 202/202 [00:00<00:00, 3932.57it/s]
+Filtered out 1 files with no samples
+Finished full dataset pass. Starting new epoch! 
+2025-12-01 12:27:59 Iteration: 4/20000, train loss: 0.5579 (vs BCE 0.2020)
+2025-12-01 12:27:59, Iteration: 20000, test loss: 0.6940 (vs BCE 0.4261)
+2025-12-01 12:30:30 Iteration: 4/21000, train loss: 0.6315 (vs BCE 0.3765)
+2025-12-01 12:30:30, Iteration: 21000, test loss: 0.6634 (vs BCE 0.3434)
+2025-12-01 12:33:02 Iteration: 4/22000, train loss: 0.6205 (vs BCE 0.3370)
+2025-12-01 12:33:02, Iteration: 22000, test loss: 0.6629 (vs BCE 0.3347)
+2025-12-01 12:35:34 Iteration: 4/23000, train loss: 0.5633 (vs BCE 0.1556)
+2025-12-01 12:35:34, Iteration: 23000, test loss: 0.6941 (vs BCE 0.4279)
+2025-12-01 12:38:06 Iteration: 4/24000, train loss: 0.6294 (vs BCE 0.3738)
+2025-12-01 12:38:06, Iteration: 24000, test loss: 0.6420 (vs BCE 0.2857)
+Data Augmentation in Progress: Applying transformations...
+  0%|          | 0/202 [00:00<?, ?it/s]100%|██████████| 202/202 [00:00<00:00, 4283.23it/s]
+Filtered out 1 files with no samples
+Finished full dataset pass. Starting new epoch! 
+2025-12-01 12:40:38 Iteration: 5/25000, train loss: 0.6216 (vs BCE 0.3613)
+2025-12-01 12:40:38, Iteration: 25000, test loss: 0.6672 (vs BCE 0.3508)
+2025-12-01 12:43:18 Iteration: 5/26000, train loss: 0.5540 (vs BCE 0.1133)
+2025-12-01 12:43:18, Iteration: 26000, test loss: 0.6391 (vs BCE 0.2791)
+2025-12-01 12:45:59 Iteration: 5/27000, train loss: 0.6267 (vs BCE 0.3710)
+2025-12-01 12:45:59, Iteration: 27000, test loss: 0.6991 (vs BCE 0.4372)
+2025-12-01 12:48:40 Iteration: 5/28000, train loss: 0.6186 (vs BCE 0.3488)
+2025-12-01 12:48:40, Iteration: 28000, test loss: 0.6410 (vs BCE 0.2845)
+2025-12-01 12:51:20 Iteration: 5/29000, train loss: 0.5540 (vs BCE 0.1359)
+2025-12-01 12:51:20, Iteration: 29000, test loss: 0.6433 (vs BCE 0.2911)
+Data Augmentation in Progress: Applying transformations...
+  0%|          | 0/202 [00:00<?, ?it/s]100%|██████████| 202/202 [00:00<00:00, 3690.32it/s]
+Filtered out 1 files with no samples
+Finished full dataset pass. Starting new epoch! 
+2025-12-01 12:54:01 Iteration: 6/30000, train loss: 0.6250 (vs BCE 0.3631)
+2025-12-01 12:54:01, Iteration: 30000, test loss: 0.6709 (vs BCE 0.3648)
+2025-12-01 12:56:32 Iteration: 6/31000, train loss: 0.6137 (vs BCE 0.3313)
+2025-12-01 12:56:32, Iteration: 31000, test loss: 0.6624 (vs BCE 0.3416)
+2025-12-01 12:59:03 Iteration: 6/32000, train loss: 0.5542 (vs BCE 0.1417)
+2025-12-01 12:59:03, Iteration: 32000, test loss: 0.7126 (vs BCE 0.4753)
+2025-12-01 13:01:34 Iteration: 6/33000, train loss: 0.6255 (vs BCE 0.3719)
+2025-12-01 13:01:34, Iteration: 33000, test loss: 0.6447 (vs BCE 0.3008)
+2025-12-01 13:04:01 Iteration: 6/34000, train loss: 0.6188 (vs BCE 0.3423)
+2025-12-01 13:04:01, Iteration: 34000, test loss: 0.6628 (vs BCE 0.3466)
+Data Augmentation in Progress: Applying transformations...
+  0%|          | 0/202 [00:00<?, ?it/s]100%|██████████| 202/202 [00:00<00:00, 4128.11it/s]
+Filtered out 1 files with no samples
+Finished full dataset pass. Starting new epoch! 
+2025-12-01 13:06:32 Iteration: 7/35000, train loss: 0.5541 (vs BCE 0.1328)
+2025-12-01 13:06:32, Iteration: 35000, test loss: 0.6536 (vs BCE 0.3183)
+2025-12-01 13:09:00 Iteration: 7/36000, train loss: 0.6347 (vs BCE 0.3835)
+2025-12-01 13:09:00, Iteration: 36000, test loss: 0.6746 (vs BCE 0.3802)
+2025-12-01 13:11:29 Iteration: 7/37000, train loss: 0.6083 (vs BCE 0.3236)
+2025-12-01 13:11:29, Iteration: 37000, test loss: 0.6504 (vs BCE 0.3083)
+2025-12-01 13:14:00 Iteration: 7/38000, train loss: 0.5545 (vs BCE 0.1301)
+2025-12-01 13:14:00, Iteration: 38000, test loss: 0.7649 (vs BCE 0.6477)
+2025-12-01 13:16:31 Iteration: 7/39000, train loss: 0.6314 (vs BCE 0.3929)
+2025-12-01 13:16:31, Iteration: 39000, test loss: 0.6982 (vs BCE 0.4623)
+Data Augmentation in Progress: Applying transformations...
+  0%|          | 0/202 [00:00<?, ?it/s]100%|██████████| 202/202 [00:00<00:00, 3797.60it/s]
+Filtered out 1 files with no samples
+Finished full dataset pass. Starting new epoch! 
+2025-12-01 13:19:01 Iteration: 8/40000, train loss: 0.6149 (vs BCE 0.3284)
+2025-12-01 13:19:01, Iteration: 40000, test loss: 0.6549 (vs BCE 0.3263)
+2025-12-01 13:21:31 Iteration: 8/41000, train loss: 0.5554 (vs BCE 0.1485)
+2025-12-01 13:21:31, Iteration: 41000, test loss: 0.6371 (vs BCE 0.2697)
+2025-12-01 13:24:02 Iteration: 8/42000, train loss: 0.6284 (vs BCE 0.3755)
+2025-12-01 13:24:02, Iteration: 42000, test loss: 0.7012 (vs BCE 0.4575)
+2025-12-01 13:26:32 Iteration: 8/43000, train loss: 0.6132 (vs BCE 0.3378)
+2025-12-01 13:26:32, Iteration: 43000, test loss: 0.6643 (vs BCE 0.3568)
+2025-12-01 13:29:02 Iteration: 8/44000, train loss: 0.5774 (vs BCE 0.2163)
+2025-12-01 13:29:02, Iteration: 44000, test loss: 0.6576 (vs BCE 0.3313)
+Data Augmentation in Progress: Applying transformations...
+  0%|          | 0/202 [00:00<?, ?it/s]100%|██████████| 202/202 [00:00<00:00, 3775.45it/s]
+Filtered out 1 files with no samples
+Finished full dataset pass. Starting new epoch! 
+2025-12-01 13:31:35 Iteration: 9/45000, train loss: 0.6233 (vs BCE 0.3667)
+2025-12-01 13:31:35, Iteration: 45000, test loss: 0.6574 (vs BCE 0.3309)
+2025-12-01 13:34:07 Iteration: 9/46000, train loss: 0.6026 (vs BCE 0.3145)
+2025-12-01 13:34:07, Iteration: 46000, test loss: 0.6626 (vs BCE 0.3471)
+2025-12-01 13:36:38 Iteration: 9/47000, train loss: 0.5530 (vs BCE 0.1243)
+2025-12-01 13:36:38, Iteration: 47000, test loss: 0.6572 (vs BCE 0.3348)
+2025-12-01 13:39:09 Iteration: 9/48000, train loss: 0.6549 (vs BCE 0.4354)
+2025-12-01 13:39:09, Iteration: 48000, test loss: 0.6623 (vs BCE 0.3554)
+2025-12-01 13:41:39 Iteration: 9/49000, train loss: 0.6142 (vs BCE 0.3332)
+2025-12-01 13:41:39, Iteration: 49000, test loss: 0.6512 (vs BCE 0.3160)
+Data Augmentation in Progress: Applying transformations...
+  0%|          | 0/202 [00:00<?, ?it/s]100%|██████████| 202/202 [00:00<00:00, 3846.33it/s]
+Filtered out 1 files with no samples
+Finished full dataset pass. Starting new epoch! 
+2025-12-01 13:44:10 Iteration: 10/50000, train loss: 0.5539 (vs BCE 0.1667)
+2025-12-01 13:44:10, Iteration: 50000, test loss: 0.7107 (vs BCE 0.5024)
+2025-12-01 13:46:51 Iteration: 10/51000, train loss: 0.6230 (vs BCE 0.3617)
+2025-12-01 13:46:51, Iteration: 51000, test loss: 0.6967 (vs BCE 0.4498)
+2025-12-01 13:49:31 Iteration: 10/52000, train loss: 0.6038 (vs BCE 0.3100)
+2025-12-01 13:49:31, Iteration: 52000, test loss: 0.6487 (vs BCE 0.2974)
+2025-12-01 13:52:12 Iteration: 10/53000, train loss: 0.5555 (vs BCE 0.1199)
+2025-12-01 13:52:12, Iteration: 53000, test loss: 0.6297 (vs BCE 0.2577)
+2025-12-01 13:54:48 Iteration: 10/54000, train loss: 0.6167 (vs BCE 0.3374)
+2025-12-01 13:54:48, Iteration: 54000, test loss: 0.6367 (vs BCE 0.2734)
+Data Augmentation in Progress: Applying transformations...
+  0%|          | 0/202 [00:00<?, ?it/s]100%|██████████| 202/202 [00:00<00:00, 3936.59it/s]
+Filtered out 1 files with no samples
+Finished full dataset pass. Starting new epoch! 
+2025-12-01 13:57:28 Iteration: 11/55000, train loss: 0.6064 (vs BCE 0.3202)
+2025-12-01 13:57:28, Iteration: 55000, test loss: 0.6940 (vs BCE 0.4529)
+2025-12-01 14:00:05 Iteration: 11/56000, train loss: 0.5701 (vs BCE 0.1905)
+2025-12-01 14:00:05, Iteration: 56000, test loss: 0.6867 (vs BCE 0.4274)
+2025-12-01 14:02:46 Iteration: 11/57000, train loss: 0.6115 (vs BCE 0.3232)
+2025-12-01 14:02:46, Iteration: 57000, test loss: 0.6391 (vs BCE 0.2713)
+2025-12-01 14:05:28 Iteration: 11/58000, train loss: 0.6254 (vs BCE 0.3667)
+2025-12-01 14:05:28, Iteration: 58000, test loss: 0.6649 (vs BCE 0.3735)
+2025-12-01 14:08:10 Iteration: 11/59000, train loss: 0.5557 (vs BCE 0.1320)
+2025-12-01 14:08:10, Iteration: 59000, test loss: 0.7062 (vs BCE 0.4945)
+Data Augmentation in Progress: Applying transformations...
+  0%|          | 0/202 [00:00<?, ?it/s]100%|██████████| 202/202 [00:00<00:00, 4212.03it/s]
+Filtered out 1 files with no samples
+Finished full dataset pass. Starting new epoch! 
+2025-12-01 14:10:50 Iteration: 12/60000, train loss: 0.6070 (vs BCE 0.3157)
+2025-12-01 14:10:50, Iteration: 60000, test loss: 0.6535 (vs BCE 0.3223)
+2025-12-01 14:13:22 Iteration: 12/61000, train loss: 0.6366 (vs BCE 0.3955)
+2025-12-01 14:13:22, Iteration: 61000, test loss: 0.6459 (vs BCE 0.3029)
+2025-12-01 14:15:51 Iteration: 12/62000, train loss: 0.5672 (vs BCE 0.2391)
+2025-12-01 14:15:51, Iteration: 62000, test loss: 0.6885 (vs BCE 0.4226)
+2025-12-01 14:18:24 Iteration: 12/63000, train loss: 0.6087 (vs BCE 0.3268)
+2025-12-01 14:18:24, Iteration: 63000, test loss: 0.6612 (vs BCE 0.3539)
+2025-12-01 14:20:58 Iteration: 12/64000, train loss: 0.6036 (vs BCE 0.2995)
+2025-12-01 14:20:58, Iteration: 64000, test loss: 0.6400 (vs BCE 0.2849)
+Data Augmentation in Progress: Applying transformations...
+  0%|          | 0/202 [00:00<?, ?it/s]100%|██████████| 202/202 [00:00<00:00, 3978.31it/s]
+Filtered out 1 files with no samples
+Finished full dataset pass. Starting new epoch! 
+2025-12-01 14:23:30 Iteration: 13/65000, train loss: 0.5533 (vs BCE 0.1088)
+2025-12-01 14:23:30, Iteration: 65000, test loss: 0.6610 (vs BCE 0.3489)
+2025-12-01 14:26:11 Iteration: 13/66000, train loss: 0.6088 (vs BCE 0.3167)
+2025-12-01 14:26:11, Iteration: 66000, test loss: 0.6690 (vs BCE 0.3753)
+2025-12-01 14:28:51 Iteration: 13/67000, train loss: 0.5986 (vs BCE 0.2983)
+2025-12-01 14:28:51, Iteration: 67000, test loss: 0.6463 (vs BCE 0.2852)
+2025-12-01 14:31:33 Iteration: 13/68000, train loss: 0.5546 (vs BCE 0.1443)
+2025-12-01 14:31:33, Iteration: 68000, test loss: 0.6735 (vs BCE 0.3882)
+2025-12-01 14:34:14 Iteration: 13/69000, train loss: 0.6084 (vs BCE 0.3135)
+2025-12-01 14:34:14, Iteration: 69000, test loss: 0.6302 (vs BCE 0.2588)
+Data Augmentation in Progress: Applying transformations...
+  0%|          | 0/202 [00:00<?, ?it/s]100%|██████████| 202/202 [00:00<00:00, 3931.73it/s]
+Filtered out 1 files with no samples
+Finished full dataset pass. Starting new epoch! 
+2025-12-01 14:36:56 Iteration: 14/70000, train loss: 0.6194 (vs BCE 0.3538)
+2025-12-01 14:36:56, Iteration: 70000, test loss: 0.6450 (vs BCE 0.2968)
+2025-12-01 14:39:36 Iteration: 14/71000, train loss: 0.5532 (vs BCE 0.1411)
+2025-12-01 14:39:36, Iteration: 71000, test loss: 0.6437 (vs BCE 0.3038)
+2025-12-01 14:42:18 Iteration: 14/72000, train loss: 0.6038 (vs BCE 0.2939)
+2025-12-01 14:42:18, Iteration: 72000, test loss: 0.6540 (vs BCE 0.3062)
+2025-12-01 14:44:57 Iteration: 14/73000, train loss: 0.6035 (vs BCE 0.3021)
+2025-12-01 14:44:57, Iteration: 73000, test loss: 0.6248 (vs BCE 0.2386)
+2025-12-01 14:47:35 Iteration: 14/74000, train loss: 0.5535 (vs BCE 0.1634)
+2025-12-01 14:47:35, Iteration: 74000, test loss: 0.6294 (vs BCE 0.2556)
