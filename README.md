@@ -23,7 +23,7 @@ Inside each of these folders you'll find:
 - `validation/hf` (for the **new data**)
 - `validation/lf`
 
-For validation, since we don't have enough HF data for validation (only 3 configurations), I allocated ~10% of LF configurations across a wide range of the design space (theta) for validation instead.
+We train on 10 HF configurations and 90% of LF configurations. Validation uses the remaining HF and LF configurations. As of this commit (1/5/2025), this is a 10/20 HF and 203/22 LF training/validation split.
 
 Each HF/LF subfolder contains many csv files—1 csv file per configuration/simulation. Each csv file corresponds with a `.h5` file, which is needed to run the CNP. 
 
