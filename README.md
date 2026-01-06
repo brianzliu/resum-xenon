@@ -13,9 +13,9 @@ The data is stored somewhat weirdly; in `resum-xenon/src/xenon/in/data` you'll f
 - `both` - Set preprocessed y value to be 1 when one raw neutron event's rows contains both 1 and 2, otherwise 0. This corresponds to neutron both reaching scintillator and TPC (the metric we most ultimately care about!)
 
 #### New Data
-- **`new_both`** - Set preprocessed y value to be 1 when one raw neutron event's rows contains both 1 and 2, otherwise 0. This corresponds to neutron both reaching scintillator and TPC (the metric we most ultimately care about!)
+- **`new_both`** - Set preprocessed y value to be 1 when the neutron's row contains values for both second_m_(x,y,z) and third_m_(x,y,z), otherwise 0. This corresponds to neutron both reaching scintillator and TPC (the metric we most ultimately care about!)
 
-(more on the meaning of 0, 1, 2 in Instructions/Data Preprocessing)
+(More on the meaning of second_m_(x,y,z) and third_m_(x,y,z) in `Instructions/Data Preprocessing`!)
 
 Inside each of these folders you'll find:
 - `training/hf`
